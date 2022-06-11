@@ -14,6 +14,3 @@
 
 <h4>👩‍💻 Useful resources</h4>
 <p>Documentation for Gryt is in the making, as of right now we have nothing to show but promises 🤞</p>
-
-<h4>🍿 Fun facts</h4>
-<p></p>
