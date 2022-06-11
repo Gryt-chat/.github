@@ -6,6 +6,7 @@
 
 <h4>🙋‍♂️ A short introduction</h4>
 <p>Gryt is an organization started by Sivert, which stems from his close friends who call themselves "gryta krutt".</p>
+<p>Currently, Gryt's main goal is to develop an Open Source text-, voice- and video-chat based application that can compete with todays standards.</p>
 
 <h4>🌈 Contribution guidelines</h4>
 <p>Wish to contribute to the development of Gryt? Create an issue ticket with your feature-request/bug-report or fork the repository of your wish, create a feature 
