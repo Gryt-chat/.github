@@ -1,0 +1,19 @@
+<div align="center">
+  <img src="./default.png">
+</div>
+
+### [Hello there](https://youtu.be/rEq1Z0bjdwc?t=6)👋🏼:ringed_planet:
+
+<h4>🙋‍♂️ A short introduction</h4>
+<p>Gryt is an organization started by Sivert, which stems from his close friends who call themselves "gryta krutt".</p>
+
+<h4>🌈 Contribution guidelines</h4>
+<p>Wish to contribute to the development of Gryt? Create an issue ticket with your feature-request/bug-report or fork the repository of your wish, create a feature 
+  and do a pull request!😀</p>
+  <p>Currently there are no big guidelines to follow for the contribution of Gryt. All feedback (good and bad) is welcome!</p>
+
+<h4>👩‍💻 Useful resources</h4>
+<p>Documentation for Gryt is in the making, as of right now we have nothing to show but promises 🤞</p>
+
+<h4>🍿 Fun facts</h4>
+<p></p>
