@@ -16,5 +16,5 @@
 <h4>👩‍💻 Useful resources</h4>
 <p>Documentation for Gryt is in the making, as of right now we have nothing to show but promises 🤞🏻</p>
 
-<h4>Gryt's current development stage</h4>
+<h4>🧪 Gryt's current development stage</h4>
 <p>Interested in seeing Gryt's current development stage? Check out the <a href="https://github.com/orgs/Gryta-Krutt/projects/1">Project Board</a>!</p>
