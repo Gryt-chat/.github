@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./default.png">
+  <img src="./Gryt.chat.png">
 </div>
 
 ### [Hello there](https://youtu.be/rEq1Z0bjdwc?t=6)👋🏼:ringed_planet:
