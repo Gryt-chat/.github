@@ -1,6 +1,6 @@
 <div align="center">
   <img src="./Gryt.chat.png">
-  <br />
+  
   <h3><a href='https://gryt.chat'>Homepage</a></h3>
   
   <h4><a href='https://docs.gryt.chat'>Documentation</a></h4>
