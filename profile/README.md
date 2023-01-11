@@ -1,6 +1,9 @@
 <div align="center">
   <img src="./Gryt.chat.png">
-  <p><a href='https://gryt.chat'>Homepage</a> • <a href='https://docs.gryt.chat'>Documentation</a></p>
+  <br />
+  <h3><a href='https://gryt.chat'>Homepage</a></h3>
+  
+  <h4><a href='https://docs.gryt.chat'>Documentation</a></h4>
 </div>
 
 ### [Hello there](https://youtu.be/rEq1Z0bjdwc?t=6)👋🏼:ringed_planet:
