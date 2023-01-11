@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./Gryt.chat.png">
+  <a href='https://gryt.chat'><img src="./Gryt.chat.png"></a>
   
   <h3><a href='https://gryt.chat'>Homepage</a></h3>
   
