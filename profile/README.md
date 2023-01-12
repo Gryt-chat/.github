@@ -1,7 +1,7 @@
 <div align="center">
-  <a href='https://gryt.chat'><img src="./Gryt.chat.png"></a>
+  <a href='https://gryt.chat'><img src="https://raw.githubusercontent.com/Gryt-chat/home/main/Github%20banner.png"></a>
   
-  <a href='https://gryt.chat'><img src='./homeButton.png'/></a> <a href='https://docs.gryt.chat'><img src='./docsButtonAlternate.png'/></a>
+  <a href='https://gryt.chat'><img src='https://raw.githubusercontent.com/Gryt-chat/home/main/homepage.png'/></a> <a href='https://docs.gryt.chat'><img src='https://raw.githubusercontent.com/Gryt-chat/home/main/documentation.png'/></a>
 </div>
 
 ### [Hello there](https://youtu.be/rEq1Z0bjdwc?t=6)👋🏼:ringed_planet:
