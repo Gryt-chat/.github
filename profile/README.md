@@ -1,19 +1,28 @@
-<div align="center">
-  <a href='https://gryt.chat'><img src="https://raw.githubusercontent.com/Gryt-chat/home/main/content/Github%20banner.png"></a>
-  
-  <a href='https://gryt.chat'><img src='https://raw.githubusercontent.com/Gryt-chat/home/main/content/homepage.png'/></a> <a href='https://docs.gryt.chat'><img src='https://raw.githubusercontent.com/Gryt-chat/home/main/content/documentation.png'/></a>
-</div>
+<h3 align="center">
+ <img src="https://raw.githubusercontent.com/Gryt-chat/gryt/main/content/round-owl-2.png" width="100" alt="Logo"/><br/>
+ <img src="" alt="" height="32" width="0px"/>
+ Gryt
+ <img src="" alt="" height="32" width="0px"/>
+</h3>
 
-### [Hello there](https://youtu.be/rEq1Z0bjdwc?t=6)👋🏼:ringed_planet:
+<h6 align="center">
+  <a href="https://gryt.chat"><img height='36' src='https://raw.githubusercontent.com/Gryt-chat/home/main/content/homepage.png'/></a>
+  <a href="https://docs.gryt.chat"><img height='36' src='https://raw.githubusercontent.com/Gryt-chat/home/main/content/documentation.png'/></a>
+</h6>
 
-<h4>🙋‍♂️ A short introduction</h4>
-<p>Gryt is an organization started by Sivert. The name stems from his close friends who call themselves "gryta krutt" (a play on the common norwegian phrase "gutta krutt").</p>
-<p>Currently, Gryt's main goal is to develop an Open Source text-, voice- and video-chat application that can compete with todays standards (aka. Discord).</p>
+<p align="center">
+ <a href="https://github.com/Gryt-chat/gryt/stargazers">
+  <img alt="Stargazers" src="https://img.shields.io/github/stars/Gryt-chat?style=for-the-badge&logo=starship&color=818cf8&logoColor=E9E9E9&labelColor=302D41"></a>
+ <!-- <a href="https://github.com/Gryt-chat/gryt/releases/latest">
+  <img alt="Releases" src="https://img.shields.io/github/release/Gryt-chat/gryt.svg?style=for-the-badge&logo=github&color=BF95F9&logoColor=E9E9E9&labelColor=302D41"/></a> -->
+ <a href="https://github.com/Gryt-chat/gryt/issues">
+  <img alt="Issues" src="https://img.shields.io/github/issues/Gryt-chat/gryt?style=for-the-badge&logo=gitbook&color=8BE8FD&logoColor=E9E9E9&labelColor=302D41"></a>
+ <!-- <a href="">
+  <img alt="Discord" src="https://img.shields.io/discord/907385605422448742?style=for-the-badge&logo=discord&color=F1FA89&logoColor=E9E9E9&labelColor=302D41"></a> -->
+</p>
 
-<h4>🌈 Contribution guidelines</h4>
-<p>Wish to contribute to the development of Gryt? Create an issue ticket with your feature-request/bug-report or fork the repository of your wish, create a feature and make a pull request!😀</p>
-<p>Currently there are no big guidelines to follow for the contribution of Gryt. All feedback (good and bad) is welcome!</p>
+&nbsp;
 
-<!-- <h4>🧪 Gryt's current development stage</h4>
-<p>Interested in seeing Gryt's current development stage? Check out the <a href="https://github.com/orgs/Gryta-Krutt/projects/1">Project Board</a>!</p>
--->
+<p align="center">
+Gryt is an open-source text-, voice- and video-chat platform that values privacy and user control of data. With Gryt, users have the ability to host their own servers, allowing them to have full control over their conversations and data. Gryt is a secure and private communication platform that empowers users to communicate freely while protecting their privacy.
+</p>
