@@ -1,5 +1,5 @@
 <h3 align="center">
- <img src="https://raw.githubusercontent.com/Gryt-chat/gryt/main/content/round-owl-2.png" width="100" alt="Logo"/><br/>
+ <img src="https://raw.githubusercontent.com/Gryt-chat/gryt/main/content/round-owl-v2.png" width="100" alt="Logo"/><br/>
  <img src="" alt="" height="32" width="0px"/>
  Gryt
  <img src="" alt="" height="32" width="0px"/>
