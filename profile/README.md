@@ -26,3 +26,5 @@
 <p align="center">
 Gryt is an open-source text-, voice- and video-chat platform that values privacy and user control of data. With Gryt, users have the ability to host their own servers, allowing them to have full control over their conversations and data. Gryt is a secure and private communication platform that empowers users to communicate freely while protecting their privacy.
 </p>
+
+<p align="center"><a href="https://forum.gryt.chat/">Visit our Forums </a></p>
