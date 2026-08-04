@@ -11,8 +11,8 @@ name: Sync Vikunja task
 #       secrets: inherit
 #
 # Keeps the Vikunja task named in the branch in step with the PR:
-#   PR opened          -> label "in review", comment the PR link on the task
-#   PR merged          -> mark done, drop the workflow labels
+#   PR opened          -> move to Review, comment the PR link on the task
+#   PR merged          -> move to Done, which marks the task done
 #   PR closed unmerged -> left alone, since that state is ambiguous
 #
 # Branch names carry the identifier, e.g. claude/GRYT-1-blog-og-images -> GRYT-1.
@@ -74,20 +74,23 @@ jobs:
           fi
           echo "Branch '$BRANCH' -> $ID (task $NUM)"
 
-          # Resolve label ids by title so they are not hardcoded here.
-          LABELS=$(api "$VIKUNJA_URL/labels")
-          label_id() { printf '%s' "$LABELS" | jq -r --arg t "$1" '.[] | select(.title == $t) | .id' | head -1; }
-          IN_PROGRESS=$(label_id "in progress")
-          IN_REVIEW=$(label_id "in review")
+          # Resolve the kanban view and its buckets by title, so renaming a bucket
+          # in the UI doesn't silently break this and no ids are hardcoded.
+          VIEW=$(api "$VIKUNJA_URL/projects/$PROJECT_ID/views" \
+            | jq -r '.[] | select(.view_kind == "kanban") | .id' | head -1)
+          BUCKETS=$(api "$VIKUNJA_URL/projects/$PROJECT_ID/views/$VIEW/buckets")
+          bucket_id() { printf '%s' "$BUCKETS" | jq -r --arg t "$1" '.[] | select(.title == $t) | .id' | head -1; }
 
-          add_label() {
-            [ -n "${2:-}" ] && [ "$2" != "null" ] || return 0
-            api -X PUT "$VIKUNJA_URL/tasks/$1/labels" -d "$(jq -nc --argjson l "$2" '{label_id:$l}')" >/dev/null 2>&1 \
-              || echo "::warning::Could not add label $2."
-          }
-          remove_label() {
-            [ -n "${2:-}" ] && [ "$2" != "null" ] || return 0
-            api -X DELETE "$VIKUNJA_URL/tasks/$1/labels/$2" >/dev/null 2>&1 || true
+          move_to() {
+            local target
+            target=$(bucket_id "$2")
+            if [ -z "$target" ] || [ "$target" = "null" ]; then
+              echo "::warning::No bucket named '$2' — leaving the task where it is."
+              return 0
+            fi
+            api -X POST "$VIKUNJA_URL/projects/$PROJECT_ID/views/$VIEW/buckets/$target/tasks" \
+              -d "$(jq -nc --argjson t "$1" '{task_id:$t}')" >/dev/null \
+              || echo "::warning::Could not move task into '$2'."
           }
           comment() {
             api -X PUT "$VIKUNJA_URL/tasks/$1/comments" -d "$(jq -nc --arg c "$2" '{comment:$c}')" >/dev/null \
@@ -99,19 +102,16 @@ jobs:
               echo "PR closed without merging — leaving $ID alone."
               exit 0
             fi
-            # Vikunja ignores a `labels` field in the task update, so `done` is set
-            # here and the labels are removed through their own endpoint.
-            api -X POST "$VIKUNJA_URL/tasks/$NUM" -d "$(jq -nc --argjson id "$NUM" '{id:$id,done:true}')" >/dev/null
-            remove_label "$NUM" "$IN_PROGRESS"
-            remove_label "$NUM" "$IN_REVIEW"
+            # Dropping into the done bucket sets the task's done flag as well,
+            # so there is no separate update needed here.
+            move_to "$NUM" "Done"
             comment "$NUM" "Merged in $PR_URL — closing."
             echo "Closed $ID."
           else
-            add_label "$NUM" "$IN_REVIEW"
-            remove_label "$NUM" "$IN_PROGRESS"
+            move_to "$NUM" "Review"
             # Only comment when the PR first appears, so reopening does not spam.
             if [ "$ACTION" = "opened" ]; then
               comment "$NUM" "PR opened: $PR_URL — $PR_TITLE"
             fi
-            echo "Marked $ID in review."
+            echo "Moved $ID to Review."
           fi
