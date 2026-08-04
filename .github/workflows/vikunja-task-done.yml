@@ -1,13 +1,20 @@
-name: Close Vikunja task
+name: Sync Vikunja task
 
-# Reusable workflow. Callers pass nothing and inherit the org secret:
+# Reusable workflow. Callers invoke it with `secrets: inherit`:
 #
+#   on:
+#     pull_request:
+#       types: [opened, reopened, closed]
 #   jobs:
-#     close-task:
+#     sync-task:
 #       uses: Gryt-chat/.github/.github/workflows/vikunja-task-done.yml@main
 #       secrets: inherit
 #
-# Marks the Vikunja task matching the branch name as done when a PR merges.
+# Keeps the Vikunja task named in the branch in step with the PR:
+#   PR opened          -> move to Review, comment the PR link on the task
+#   PR merged          -> move to Done, which marks the task done
+#   PR closed unmerged -> left alone, since that state is ambiguous
+#
 # Branch names carry the identifier, e.g. claude/GRYT-1-blog-og-images -> GRYT-1.
 
 on:
@@ -28,29 +35,29 @@ on:
         required: true
 
 jobs:
-  close-task:
-    # Only on a real merge — a closed-without-merging PR must not close the task.
-    if: github.event.pull_request.merged == true
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Mark task done
+      - name: Sync task with PR state
         env:
+          ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
           VIKUNJA_URL: ${{ inputs.vikunja_url }}
           PROJECT_ID: ${{ inputs.project_id }}
           TOKEN: ${{ secrets.VIKUNJA_API_TOKEN }}
         run: |
           set -euo pipefail
 
-          # Pull GRYT-<n> out of the branch name. No match is normal (docs typo
-          # branches, dependabot, contributor branches) — succeed quietly.
+          # Pull GRYT-<n> out of the branch name. No match is normal (dependabot,
+          # contributor branches, quick fixes) — succeed quietly.
           ID=$(printf '%s' "$BRANCH" | grep -oiE '[A-Z]+-[0-9]+' | head -1 | tr '[:lower:]' '[:upper:]' || true)
           if [ -z "$ID" ]; then
-            echo "No task identifier in branch '$BRANCH' — nothing to close."
+            echo "No task identifier in branch '$BRANCH' — nothing to sync."
             exit 0
           fi
-          echo "Branch '$BRANCH' -> task $ID"
 
           api() {
             curl -sS --fail-with-body --max-time 30 \
@@ -59,31 +66,52 @@ jobs:
               -H "User-Agent: gryt-ci" "$@"
           }
 
-          # Resolve the human identifier to Vikunja's numeric task id.
           TASKS=$(api "$VIKUNJA_URL/projects/$PROJECT_ID/tasks?per_page=200")
           NUM=$(printf '%s' "$TASKS" | jq -r --arg id "$ID" '.[] | select(.identifier == $id) | .id' | head -1)
           if [ -z "$NUM" ] || [ "$NUM" = "null" ]; then
             echo "::warning::No Vikunja task matches $ID — leaving it alone."
             exit 0
           fi
+          echo "Branch '$BRANCH' -> $ID (task $NUM)"
 
-          api -X POST "$VIKUNJA_URL/tasks/$NUM" \
-            -d "$(jq -nc --argjson id "$NUM" '{id: $id, done: true}')" > /dev/null
+          # Resolve the kanban view and its buckets by title, so renaming a bucket
+          # in the UI doesn't silently break this and no ids are hardcoded.
+          VIEW=$(api "$VIKUNJA_URL/projects/$PROJECT_ID/views" \
+            | jq -r '.[] | select(.view_kind == "kanban") | .id' | head -1)
+          BUCKETS=$(api "$VIKUNJA_URL/projects/$PROJECT_ID/views/$VIEW/buckets")
+          bucket_id() { printf '%s' "$BUCKETS" | jq -r --arg t "$1" '.[] | select(.title == $t) | .id' | head -1; }
 
-          # Labels are NOT settable through the task update — Vikunja silently
-          # ignores a `labels` field there. They have their own endpoint, so the
-          # workflow labels have to be removed one by one.
-          printf '%s' "$TASKS" | jq -r --arg id "$ID" \
-            '.[] | select(.identifier == $id) | .labels // [] | .[]
-              | select(.title == "in progress" or .title == "in review") | .id' \
-          | while read -r LABEL; do
-              [ -n "$LABEL" ] || continue
-              api -X DELETE "$VIKUNJA_URL/tasks/$NUM/labels/$LABEL" > /dev/null \
-                || echo "::warning::Could not remove label $LABEL."
-            done
+          move_to() {
+            local target
+            target=$(bucket_id "$2")
+            if [ -z "$target" ] || [ "$target" = "null" ]; then
+              echo "::warning::No bucket named '$2' — leaving the task where it is."
+              return 0
+            fi
+            api -X POST "$VIKUNJA_URL/projects/$PROJECT_ID/views/$VIEW/buckets/$target/tasks" \
+              -d "$(jq -nc --argjson t "$1" '{task_id:$t}')" >/dev/null \
+              || echo "::warning::Could not move task into '$2'."
+          }
+          comment() {
+            api -X PUT "$VIKUNJA_URL/tasks/$1/comments" -d "$(jq -nc --arg c "$2" '{comment:$c}')" >/dev/null \
+              || echo "::warning::Comment failed."
+          }
 
-          api -X PUT "$VIKUNJA_URL/tasks/$NUM/comments" \
-            -d "$(jq -nc --arg url "$PR_URL" '{comment: ("Merged in " + $url + " — closing.")}')" > /dev/null \
-            || echo "::warning::Task closed, but the comment failed."
-
-          echo "Closed $ID (task $NUM)."
+          if [ "$ACTION" = "closed" ]; then
+            if [ "$MERGED" != "true" ]; then
+              echo "PR closed without merging — leaving $ID alone."
+              exit 0
+            fi
+            # Dropping into the done bucket sets the task's done flag as well,
+            # so there is no separate update needed here.
+            move_to "$NUM" "Done"
+            comment "$NUM" "Merged in $PR_URL — closing."
+            echo "Closed $ID."
+          else
+            move_to "$NUM" "Review"
+            # Only comment when the PR first appears, so reopening does not spam.
+            if [ "$ACTION" = "opened" ]; then
+              comment "$NUM" "PR opened: $PR_URL — $PR_TITLE"
+            fi
+            echo "Moved $ID to Review."
+          fi
