@@ -1,0 +1,136 @@
+name: Discord CI notification
+
+# Reusable workflow. Callers invoke it from a workflow_run trigger with
+# `secrets: inherit`:
+#
+#   on:
+#     workflow_run:
+#       workflows: [Sync Vikunja task]
+#       types: [completed]
+#   jobs:
+#     notify:
+#       uses: Gryt-chat/.github/.github/workflows/discord-ci-notify.yml@main
+#       secrets: inherit
+#
+# Posts to #ci when a workflow fails, and once more when it goes green again.
+# Successes are otherwise silent. The channel is only worth leaving unmuted if
+# it stays quiet, so anything that isn't a failure or a recovery says nothing.
+#
+# Callers must list the workflows they watch by name. GitHub's docs don't say
+# whether `workflows` can be omitted to mean "all of them", so we don't rely on
+# it — an unlisted workflow silently never notifies, which is the worst way for
+# this to break. Add new workflows to the caller's list as you add them.
+#
+# Needs the org secret DISCORD_CI_WEBHOOK_URL.
+
+on:
+  workflow_call:
+    inputs:
+      channel_name:
+        description: Channel named in the embed footer, for orientation
+        required: false
+        type: string
+        default: "#ci"
+    secrets:
+      DISCORD_CI_WEBHOOK_URL:
+        required: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post failure or recovery to Discord
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_CI_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
+          CHANNEL: ${{ inputs.channel_name }}
+          REPO: ${{ github.event.repository.full_name }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          WF_ID: ${{ github.event.workflow_run.workflow_id }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          ACTOR: ${{ github.event.workflow_run.actor.login }}
+          TRIGGER: ${{ github.event.workflow_run.event }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "DISCORD_CI_WEBHOOK_URL secret not set — skipping"
+            exit 0
+          fi
+
+          # cancelled/skipped/neutral are usually deliberate, so they say nothing.
+          case "$CONCLUSION" in
+            failure|timed_out) STATE="failed" ;;
+            success)           STATE="maybe-recovered" ;;
+            *)                 echo "Conclusion '$CONCLUSION' is not worth a message."; exit 0 ;;
+          esac
+
+          # A green run only earns a message if it follows a red one, so the
+          # channel reports transitions rather than status. Look at the previous
+          # completed run of the same workflow on the same branch.
+          if [ "$STATE" = "maybe-recovered" ]; then
+            PREV=$(gh api \
+              "repos/$REPO/actions/workflows/$WF_ID/runs?branch=$BRANCH&status=completed&per_page=10" \
+              --jq "[.workflow_runs[] | select(.id < $RUN_ID)] | first | .conclusion" 2>/dev/null || echo "")
+
+            case "$PREV" in
+              failure|timed_out)
+                STATE="recovered"
+                ;;
+              *)
+                echo "Previous run on '$BRANCH' was '${PREV:-none}' — no recovery to report."
+                exit 0
+                ;;
+            esac
+          fi
+
+          if [ "$STATE" = "failed" ]; then
+            TITLE="❌ $WF_NAME failed"
+            COLOR=15548997   # Discord red
+          else
+            TITLE="✅ $WF_NAME is green again"
+            COLOR=5763719    # Discord green
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg url "$RUN_URL" \
+            --arg repo "$REPO" \
+            --arg branch "${BRANCH:-unknown}" \
+            --arg sha "$(printf '%s' "${SHA:-}" | cut -c1-7)" \
+            --arg actor "${ACTOR:-unknown}" \
+            --arg trigger "${TRIGGER:-unknown}" \
+            --arg run "#$RUN_NUMBER" \
+            --arg channel "$CHANNEL" \
+            --argjson color "$COLOR" \
+            '{
+              embeds: [{
+                title: $title,
+                url: $url,
+                color: $color,
+                fields: [
+                  { name: "Repository", value: $repo,    inline: true },
+                  { name: "Branch",     value: $branch,  inline: true },
+                  { name: "Run",        value: $run,     inline: true },
+                  { name: "Commit",     value: $sha,     inline: true },
+                  { name: "Triggered by", value: $actor, inline: true },
+                  { name: "Event",      value: $trigger, inline: true }
+                ],
+                footer: { text: "Gryt CI" },
+                timestamp: (now | todate)
+              }]
+            }')
+
+          # Don't fail the notifier when Discord is unhappy — a broken alert path
+          # shouldn't also show up as a second red run.
+          curl -sS --fail-with-body --max-time 30 \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" "$WEBHOOK_URL" \
+            || echo "::warning::Could not post to Discord."
+
+          echo "Reported '$STATE' for $WF_NAME on $BRANCH."
