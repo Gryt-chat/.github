@@ -30,9 +30,21 @@ on:
         required: false
         type: number
         default: 2
+      issue_repo:
+        description: Repository holding the GitHub issues these tasks came from
+        required: false
+        type: string
+        default: Gryt-chat/gryt
     secrets:
       VIKUNJA_API_TOKEN:
         required: true
+      ISSUE_CLOSE_TOKEN:
+        description: >
+          Token with issue-write access to issue_repo. github.token only covers
+          the repository running the workflow, so closing an issue in the
+          superproject from a submodule PR needs a wider one. Optional — without
+          it the close is skipped with a warning.
+        required: false
 
 jobs:
   sync:
@@ -48,6 +60,8 @@ jobs:
           VIKUNJA_URL: ${{ inputs.vikunja_url }}
           PROJECT_ID: ${{ inputs.project_id }}
           TOKEN: ${{ secrets.VIKUNJA_API_TOKEN }}
+          ISSUE_REPO: ${{ inputs.issue_repo }}
+          ISSUE_TOKEN: ${{ secrets.ISSUE_CLOSE_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -97,6 +111,80 @@ jobs:
               || echo "::warning::Comment failed."
           }
 
+          # Close the GitHub issue the task came from, if it names one.
+          #
+          # Issues live in the superproject while the fixes are PRs in the
+          # submodules, and GitHub's closing keywords only work inside a single
+          # repository — Gryt-chat/client#5 said "Fixes #27" and gryt#27 stayed
+          # open regardless. The link exists on the Vikunja task, so close it
+          # from here instead of relying on anyone remembering.
+          close_linked_issue() {
+            local desc="$1"
+
+            # This reads prose, so it refuses to guess. A description that names
+            # two different issues is ambiguous — one of them is probably being
+            # discussed rather than fixed — and closing the wrong issue is worse
+            # than closing none. Caught in testing: a task describing this very
+            # feature quoted "GitHub issue #5" as an example and would have
+            # closed an unrelated open bug.
+            local issues
+            issues=$(printf '%s' "$desc" \
+              | grep -oiE 'GitHub issue #?[0-9]+' \
+              | grep -oE '[0-9]+' \
+              | sort -u || true)
+
+            local count
+            count=$(printf '%s' "$issues" | grep -c . || true)
+
+            if [ "${count:-0}" -eq 0 ]; then
+              echo "No GitHub issue referenced on $ID."
+              return 0
+            fi
+
+            if [ "$count" -gt 1 ]; then
+              echo "::warning::$ID references several issues ($(printf '%s' "$issues" | tr '\n' ' ')) — not guessing which to close."
+              return 0
+            fi
+
+            local issue="$issues"
+
+            if [ -z "${ISSUE_TOKEN:-}" ]; then
+              echo "::warning::$ID references $ISSUE_REPO#$issue but ISSUE_CLOSE_TOKEN is not set — leaving it open."
+              return 0
+            fi
+
+            local api="https://api.github.com/repos/$ISSUE_REPO/issues/$issue"
+
+            local state
+            state=$(curl -sS --max-time 30 -H "Authorization: Bearer $ISSUE_TOKEN" \
+              -H "Accept: application/vnd.github+json" "$api" | jq -r '.state // "unknown"')
+
+            if [ "$state" != "open" ]; then
+              echo "$ISSUE_REPO#$issue is already '$state' — nothing to do."
+              return 0
+            fi
+
+            # Comment first. A bare close tells the reporter nothing about what
+            # changed or where to look.
+            curl -sS --max-time 30 -X POST \
+              -H "Authorization: Bearer $ISSUE_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -d "$(jq -nc --arg b "Fixed in $PR_URL — $PR_TITLE" '{body:$b}')" \
+              "$api/comments" >/dev/null \
+              || echo "::warning::Could not comment on $ISSUE_REPO#$issue."
+
+            if curl -sS --fail-with-body --max-time 30 -X PATCH \
+              -H "Authorization: Bearer $ISSUE_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -d '{"state":"closed","state_reason":"completed"}' \
+              "$api" >/dev/null
+            then
+              echo "Closed $ISSUE_REPO#$issue."
+            else
+              echo "::warning::Could not close $ISSUE_REPO#$issue."
+            fi
+          }
+
           if [ "$ACTION" = "closed" ]; then
             if [ "$MERGED" != "true" ]; then
               echo "PR closed without merging — leaving $ID alone."
@@ -107,6 +195,10 @@ jobs:
             move_to "$NUM" "Done"
             comment "$NUM" "Merged in $PR_URL — closing."
             echo "Closed $ID."
+
+            DESC=$(printf '%s' "$TASKS" | jq -r --arg id "$ID" \
+              '.[] | select(.identifier == $id) | .description // ""')
+            close_linked_issue "$DESC"
           else
             move_to "$NUM" "Review"
             # Only comment when the PR first appears, so reopening does not spam.
