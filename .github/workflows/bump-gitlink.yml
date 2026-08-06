@@ -26,9 +26,11 @@ on:
     secrets:
       GITLINK_DISPATCH_TOKEN:
         description: >
-          Token with actions-write access to the superproject. github.token only
-          covers the repository running the workflow, so reaching another one
-          needs a wider token. Optional: without it the dispatch is skipped with
+          Token with Contents: write on the superproject — that is what the
+          repository dispatch endpoint requires, despite the name suggesting
+          Actions. github.token only covers the repository running the workflow,
+          so reaching another one needs a wider token. Optional: without it the
+          dispatch is skipped with
           a warning and the superproject's hourly sweep picks the change up
           instead, just later.
         required: false
