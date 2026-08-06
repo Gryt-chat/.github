@@ -1,0 +1,66 @@
+name: Bump superproject gitlink
+
+# Reusable workflow. Callers invoke it with `secrets: inherit`:
+#
+#   on:
+#     push:
+#       branches: [main]
+#   jobs:
+#     bump:
+#       uses: Gryt-chat/.github/.github/workflows/bump-gitlink.yml@main
+#       secrets: inherit
+#
+# Tells the superproject that this repository's main has moved, so it can
+# fast-forward the gitlink instead of waiting for its hourly sweep. GitHub
+# throttles scheduled workflows on quiet repositories, so the sweep alone is
+# not prompt — it produced one run in two hours when set to every 15 minutes.
+
+on:
+  workflow_call:
+    inputs:
+      superproject:
+        description: Repository holding the submodule pointers
+        required: false
+        type: string
+        default: Gryt-chat/gryt
+    secrets:
+      GITLINK_DISPATCH_TOKEN:
+        description: >
+          Token with actions-write access to the superproject. github.token only
+          covers the repository running the workflow, so reaching another one
+          needs a wider token. Optional: without it the dispatch is skipped with
+          a warning and the superproject's hourly sweep picks the change up
+          instead, just later.
+        required: false
+
+jobs:
+  dispatch:
+    name: Notify the superproject
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send repository_dispatch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITLINK_DISPATCH_TOKEN }}
+          SUPERPROJECT: ${{ inputs.superproject }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::warning::GITLINK_DISPATCH_TOKEN is not set — skipping."
+            echo "The gitlink will still move, on ${SUPERPROJECT}'s hourly sweep."
+            exit 0
+          fi
+
+          gh api "repos/${SUPERPROJECT}/dispatches" --method POST --input - <<JSON
+          {
+            "event_type": "submodule-updated",
+            "client_payload": {
+              "repository": "${GITHUB_REPOSITORY}",
+              "sha": "${GITHUB_SHA}"
+            }
+          }
+          JSON
+
+          echo "Told ${SUPERPROJECT} that ${GITHUB_REPOSITORY}@${GITHUB_SHA:0:7} landed."
