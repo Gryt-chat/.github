@@ -1,0 +1,4 @@
+# Org-wide default. Repos with their own .github/FUNDING.yml override this.
+
+github: [sivert-io]
+ko_fi: sivert
