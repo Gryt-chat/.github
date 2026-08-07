@@ -80,10 +80,40 @@ jobs:
               -H "User-Agent: gryt-ci" "$@"
           }
 
-          TASKS=$(api "$VIKUNJA_URL/projects/$PROJECT_ID/tasks?per_page=200")
-          NUM=$(printf '%s' "$TASKS" | jq -r --arg id "$ID" '.[] | select(.identifier == $id) | .id' | head -1)
-          if [ -z "$NUM" ] || [ "$NUM" = "null" ]; then
-            echo "::warning::No Vikunja task matches $ID — leaving it alone."
+          # A branch may name a tracker this project does not own — gh-42, or a
+          # plain slug from someone without Vikunja access. That is normal and
+          # must not be treated as a failure: nobody should be blocked on a
+          # tracker they cannot reach.
+          PREFIX=$(api "$VIKUNJA_URL/projects/$PROJECT_ID" | jq -r '.identifier // empty')
+          if [ -n "$PREFIX" ] && [ "${ID%%-*}" != "$PREFIX" ]; then
+            echo "Branch names ${ID%%-*}, but this project uses $PREFIX — nothing to sync."
+            exit 0
+          fi
+
+          # Look the task up server-side, by index.
+          #
+          # This used to fetch /tasks?per_page=200 and scan the result client
+          # side. Vikunja caps per_page at 50 and ignores anything larger — the
+          # response says so in x-pagination-result-count — so the scan only
+          # ever saw the first page. Once this project passed 50 tasks every
+          # newer one became invisible: the lookup found nothing, the step
+          # exited green, and the board quietly stopped updating. GRYT-57 was
+          # the first to hit it.
+          #
+          # A filtered query is also O(1), so it cannot rot again at 100.
+          TASK=$(api -G "$VIKUNJA_URL/projects/$PROJECT_ID/tasks" \
+            --data-urlencode "filter=index = ${ID##*-}" | jq -c '.[0] // empty')
+          NUM=$(printf '%s' "$TASK" | jq -r '.id // empty')
+          if [ -z "$NUM" ]; then
+            echo "::warning::No $PREFIX task with index ${ID##*-} — leaving it alone."
+            exit 0
+          fi
+
+          # The filter matches on index alone, so confirm the task really is the
+          # one the branch named before writing to it.
+          FOUND=$(printf '%s' "$TASK" | jq -r '.identifier // empty')
+          if [ -n "$FOUND" ] && [ "$FOUND" != "$ID" ]; then
+            echo "::warning::Branch names $ID but index ${ID##*-} resolves to $FOUND — leaving it alone."
             exit 0
           fi
           echo "Branch '$BRANCH' -> $ID (task $NUM)"
@@ -196,8 +226,10 @@ jobs:
             comment "$NUM" "Merged in $PR_URL — closing."
             echo "Closed $ID."
 
-            DESC=$(printf '%s' "$TASKS" | jq -r --arg id "$ID" \
-              '.[] | select(.identifier == $id) | .description // ""')
+            # Same task we already fetched. This previously re-scanned the
+            # first-page listing, so linked issues stopped closing at exactly
+            # the same 50-task threshold.
+            DESC=$(printf '%s' "$TASK" | jq -r '.description // ""')
             close_linked_issue "$DESC"
           else
             move_to "$NUM" "Review"
