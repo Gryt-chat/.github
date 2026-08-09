@@ -1,0 +1,24 @@
+name: Sync Vikunja task
+
+# The caller for this repo's own PRs.
+#
+# Every other repo reaches vikunja-task-done.yml with
+# `uses: Gryt-chat/.github/.github/workflows/vikunja-task-done.yml@main`. This
+# one references it by path instead, so a PR that changes the workflow is
+# synced by the version in that PR rather than the version already on main.
+# That means a change to the sync logic tests itself on the way in — which is
+# the whole reason this file exists, since the repo that maintains the board
+# was the only one invisible to it.
+#
+# The trade: a PR that breaks the workflow fails its own check. That is the
+# correct feedback, and it fails loudly here rather than silently across the
+# other seven repos after merging.
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+
+jobs:
+  sync-task:
+    uses: ./.github/workflows/vikunja-task-done.yml
+    secrets: inherit
