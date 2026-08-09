@@ -104,9 +104,27 @@ jobs:
           TASK=$(api -G "$VIKUNJA_URL/projects/$PROJECT_ID/tasks" \
             --data-urlencode "filter=index = ${ID##*-}" | jq -c '.[0] // empty')
           NUM=$(printf '%s' "$TASK" | jq -r '.id // empty')
+
+          # Fail, rather than warn and carry on.
+          #
+          # The prefix check above already let through every branch that names
+          # somebody else's tracker. Getting here means the branch claims one of
+          # OUR ids and that id does not exist, which is a typo — and a typo that
+          # exits green is worse than a loud one, because the index is not
+          # permanently free. It gets handed to the next task somebody files.
+          #
+          # That already happened. client#60 merged on 2026-08-08 from
+          # claude/GRYT-93-prefer-animated-emotes; the work was GRYT-91 and no
+          # task 93 existed yet, so this step warned and passed and GRYT-91 was
+          # never closed. GRYT-93 was then created on 2026-08-09 for something
+          # unrelated. The identifier guard below cannot catch that case: by then
+          # the branch and the resolved task BOTH read GRYT-93, so a re-run would
+          # close the wrong task and look correct doing it.
           if [ -z "$NUM" ]; then
-            echo "::warning::No $PREFIX task with index ${ID##*-} — leaving it alone."
-            exit 0
+            echo "::error::Branch '$BRANCH' names $ID, but $PREFIX has no task with index ${ID##*-}."
+            echo "Either the id is a typo, or the task was deleted after the branch was cut."
+            echo "Rename the branch to the right $PREFIX id, or drop the id from it if there is no task."
+            exit 1
           fi
 
           # The filter matches on index alone, so confirm the task really is the
