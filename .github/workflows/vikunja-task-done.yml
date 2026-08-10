@@ -10,12 +10,23 @@ name: Sync Vikunja task
 #       uses: Gryt-chat/.github/.github/workflows/vikunja-task-done.yml@main
 #       secrets: inherit
 #
-# Keeps the Vikunja task named in the branch in step with the PR:
+# Keeps every Vikunja task the PR names in step with it:
 #   PR opened          -> move to Review, comment the PR link on the task
 #   PR merged          -> move to Done, which marks the task done
 #   PR closed unmerged -> left alone, since that state is ambiguous
 #
-# Branch names carry the identifier, e.g. claude/GRYT-1-blog-og-images -> GRYT-1.
+# Identifiers come from two places, and are not trusted equally:
+#
+#   branch  claude/GRYT-1-blog-og-images        -> GRYT-1, and it must exist
+#   title   "Fix the thing (GRYT-1, 2, 7)"      -> GRYT-1, GRYT-2, GRYT-7
+#
+# The branch is structured, so an id in it that does not resolve fails the run —
+# see the note at the lookup. A title is prose and may mention a task without
+# claiming to close it, so ids found only there are additive and a miss warns.
+#
+# The shorthand "GRYT-1, 2, 7" is expanded, since that is how a list actually
+# gets written. Only commas do that: "GRYT-1, 2 and 7" finds 1 and 2 but not 7,
+# so spell out anything after an "and".
 
 on:
   workflow_call:
@@ -65,11 +76,42 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Pull GRYT-<n> out of the branch name. No match is normal (dependabot,
-          # contributor branches, quick fixes) — succeed quietly.
-          ID=$(printf '%s' "$BRANCH" | grep -oiE '[A-Z]+-[0-9]+' | head -1 | tr '[:lower:]' '[:upper:]' || true)
-          if [ -z "$ID" ]; then
-            echo "No task identifier in branch '$BRANCH' — nothing to sync."
+          # Every task this PR names, from the branch and from the title.
+          #
+          # A PR often covers more than one task — the moderation work was four
+          # server tasks in one PR — and syncing only the branch's id left the
+          # rest sitting in Review to be closed by hand.
+          #
+          # The two sources are not equivalent, and are deliberately not treated
+          # the same below. A branch name is structured and an id in it is a
+          # claim. A title is prose, and can mention a task without claiming to
+          # close it: "supersedes GRYT-100", "follow-up to GRYT-42".
+          # "GRYT-125, 127, 128" is how people actually write a list, so expand
+          # the shorthand before matching: each bare number after an id inherits
+          # that id's prefix. Without this the list reads as one task and the
+          # rest are silently dropped — which is the bug this is fixing, so it
+          # would have shipped still broken for the exact title that prompted it.
+          ids_in() {
+            # The -e form of the label works on both GNU and BSD sed; the
+            # one-line ':a; …; ta' form does not, and only GNU sed runs on the
+            # runner — which would have made this untestable anywhere else.
+            printf '%s' "$1" \
+              | sed -E -e ':a' \
+                       -e 's/([A-Za-z]+)-([0-9]+)([[:space:]]*,[[:space:]]*)([0-9]+)/\1-\2\3\1-\4/g' \
+                       -e 'ta' \
+              | grep -oiE '[A-Z]+-[0-9]+' | tr '[:lower:]' '[:upper:]' || true
+          }
+
+          BRANCH_ID=$(ids_in "$BRANCH" | head -1)
+          TITLE_IDS=$(ids_in "$PR_TITLE")
+
+          # Branch first, then any title ids it did not already cover, in the
+          # order they were written. awk does the dedupe because `sort -u` would
+          # reorder them and make the log harder to follow.
+          IDS=$(printf '%s\n%s\n' "$BRANCH_ID" "$TITLE_IDS" | grep -v '^$' | awk '!seen[$0]++' || true)
+
+          if [ -z "$IDS" ]; then
+            echo "No task identifier in branch '$BRANCH' or title '$PR_TITLE' — nothing to sync."
             exit 0
           fi
 
@@ -80,61 +122,11 @@ jobs:
               -H "User-Agent: gryt-ci" "$@"
           }
 
-          # A branch may name a tracker this project does not own — gh-42, or a
-          # plain slug from someone without Vikunja access. That is normal and
-          # must not be treated as a failure: nobody should be blocked on a
-          # tracker they cannot reach.
+          # A branch or title may name a tracker this project does not own —
+          # gh-42, or a plain slug from someone without Vikunja access. That is
+          # normal and must not be treated as a failure: nobody should be
+          # blocked on a tracker they cannot reach.
           PREFIX=$(api "$VIKUNJA_URL/projects/$PROJECT_ID" | jq -r '.identifier // empty')
-          if [ -n "$PREFIX" ] && [ "${ID%%-*}" != "$PREFIX" ]; then
-            echo "Branch names ${ID%%-*}, but this project uses $PREFIX — nothing to sync."
-            exit 0
-          fi
-
-          # Look the task up server-side, by index.
-          #
-          # This used to fetch /tasks?per_page=200 and scan the result client
-          # side. Vikunja caps per_page at 50 and ignores anything larger — the
-          # response says so in x-pagination-result-count — so the scan only
-          # ever saw the first page. Once this project passed 50 tasks every
-          # newer one became invisible: the lookup found nothing, the step
-          # exited green, and the board quietly stopped updating. GRYT-57 was
-          # the first to hit it.
-          #
-          # A filtered query is also O(1), so it cannot rot again at 100.
-          TASK=$(api -G "$VIKUNJA_URL/projects/$PROJECT_ID/tasks" \
-            --data-urlencode "filter=index = ${ID##*-}" | jq -c '.[0] // empty')
-          NUM=$(printf '%s' "$TASK" | jq -r '.id // empty')
-
-          # Fail, rather than warn and carry on.
-          #
-          # The prefix check above already let through every branch that names
-          # somebody else's tracker. Getting here means the branch claims one of
-          # OUR ids and that id does not exist, which is a typo — and a typo that
-          # exits green is worse than a loud one, because the index is not
-          # permanently free. It gets handed to the next task somebody files.
-          #
-          # That already happened. client#60 merged on 2026-08-08 from
-          # claude/GRYT-93-prefer-animated-emotes; the work was GRYT-91 and no
-          # task 93 existed yet, so this step warned and passed and GRYT-91 was
-          # never closed. GRYT-93 was then created on 2026-08-09 for something
-          # unrelated. The identifier guard below cannot catch that case: by then
-          # the branch and the resolved task BOTH read GRYT-93, so a re-run would
-          # close the wrong task and look correct doing it.
-          if [ -z "$NUM" ]; then
-            echo "::error::Branch '$BRANCH' names $ID, but $PREFIX has no task with index ${ID##*-}."
-            echo "Either the id is a typo, or the task was deleted after the branch was cut."
-            echo "Rename the branch to the right $PREFIX id, or drop the id from it if there is no task."
-            exit 1
-          fi
-
-          # The filter matches on index alone, so confirm the task really is the
-          # one the branch named before writing to it.
-          FOUND=$(printf '%s' "$TASK" | jq -r '.identifier // empty')
-          if [ -n "$FOUND" ] && [ "$FOUND" != "$ID" ]; then
-            echo "::warning::Branch names $ID but index ${ID##*-} resolves to $FOUND — leaving it alone."
-            exit 0
-          fi
-          echo "Branch '$BRANCH' -> $ID (task $NUM)"
 
           # Resolve the kanban view and its buckets by title, so renaming a bucket
           # in the UI doesn't silently break this and no ids are hardcoded.
@@ -167,7 +159,8 @@ jobs:
           # open regardless. The link exists on the Vikunja task, so close it
           # from here instead of relying on anyone remembering.
           close_linked_issue() {
-            local desc="$1"
+            local id="$1"
+            local desc="$2"
 
             # This reads prose, so it refuses to guess. A description that names
             # two different issues is ambiguous — one of them is probably being
@@ -185,19 +178,19 @@ jobs:
             count=$(printf '%s' "$issues" | grep -c . || true)
 
             if [ "${count:-0}" -eq 0 ]; then
-              echo "No GitHub issue referenced on $ID."
+              echo "No GitHub issue referenced on $id."
               return 0
             fi
 
             if [ "$count" -gt 1 ]; then
-              echo "::warning::$ID references several issues ($(printf '%s' "$issues" | tr '\n' ' ')) — not guessing which to close."
+              echo "::warning::$id references several issues ($(printf '%s' "$issues" | tr '\n' ' ')) — not guessing which to close."
               return 0
             fi
 
             local issue="$issues"
 
             if [ -z "${ISSUE_TOKEN:-}" ]; then
-              echo "::warning::$ID references $ISSUE_REPO#$issue but ISSUE_CLOSE_TOKEN is not set — leaving it open."
+              echo "::warning::$id references $ISSUE_REPO#$issue but ISSUE_CLOSE_TOKEN is not set — leaving it open."
               return 0
             fi
 
@@ -233,27 +226,111 @@ jobs:
             fi
           }
 
-          if [ "$ACTION" = "closed" ]; then
-            if [ "$MERGED" != "true" ]; then
-              echo "PR closed without merging — leaving $ID alone."
-              exit 0
-            fi
-            # Dropping into the done bucket sets the task's done flag as well,
-            # so there is no separate update needed here.
-            move_to "$NUM" "Done"
-            comment "$NUM" "Merged in $PR_URL — closing."
-            echo "Closed $ID."
+          # Sync one task. $2 is "strict" for the id the branch names and
+          # "loose" for one only the title mentions — see the note where IDS is
+          # built. Returns non-zero only for a strict id that does not resolve.
+          sync_task() {
+            local id="$1" strictness="$2"
 
-            # Same task we already fetched. This previously re-scanned the
-            # first-page listing, so linked issues stopped closing at exactly
-            # the same 50-task threshold.
-            DESC=$(printf '%s' "$TASK" | jq -r '.description // ""')
-            close_linked_issue "$DESC"
-          else
-            move_to "$NUM" "Review"
-            # Only comment when the PR first appears, so reopening does not spam.
-            if [ "$ACTION" = "opened" ]; then
-              comment "$NUM" "PR opened: $PR_URL — $PR_TITLE"
+            if [ -n "$PREFIX" ] && [ "${id%%-*}" != "$PREFIX" ]; then
+              echo "$id names ${id%%-*}, but this project uses $PREFIX — skipping."
+              return 0
             fi
-            echo "Moved $ID to Review."
+
+            # Look the task up server-side, by index.
+            #
+            # This used to fetch /tasks?per_page=200 and scan the result client
+            # side. Vikunja caps per_page at 50 and ignores anything larger — the
+            # response says so in x-pagination-result-count — so the scan only
+            # ever saw the first page. Once this project passed 50 tasks every
+            # newer one became invisible: the lookup found nothing, the step
+            # exited green, and the board quietly stopped updating. GRYT-57 was
+            # the first to hit it.
+            #
+            # A filtered query is also O(1), so it cannot rot again at 100.
+            local task num found
+            task=$(api -G "$VIKUNJA_URL/projects/$PROJECT_ID/tasks" \
+              --data-urlencode "filter=index = ${id##*-}" | jq -c '.[0] // empty')
+            num=$(printf '%s' "$task" | jq -r '.id // empty')
+
+            if [ -z "$num" ]; then
+              # Fail for the branch, warn for the title.
+              #
+              # The prefix check above already let through every branch that
+              # names somebody else's tracker. A strict id that gets here claims
+              # one of OUR ids and that id does not exist, which is a typo — and
+              # a typo that exits green is worse than a loud one, because the
+              # index is not permanently free. It gets handed to the next task
+              # somebody files.
+              #
+              # That already happened. client#60 merged on 2026-08-08 from
+              # claude/GRYT-93-prefer-animated-emotes; the work was GRYT-91 and
+              # no task 93 existed yet, so this step warned and passed and
+              # GRYT-91 was never closed. GRYT-93 was then created on 2026-08-09
+              # for something unrelated. The identifier guard below cannot catch
+              # that case: by then the branch and the resolved task BOTH read
+              # GRYT-93, so a re-run would close the wrong task and look correct
+              # doing it.
+              #
+              # A title id is prose and gets the benefit of the doubt: a PR that
+              # says "supersedes GRYT-100" after GRYT-100 was deleted should not
+              # fail the run.
+              if [ "$strictness" = "strict" ]; then
+                echo "::error::Branch '$BRANCH' names $id, but $PREFIX has no task with index ${id##*-}."
+                echo "Either the id is a typo, or the task was deleted after the branch was cut."
+                echo "Rename the branch to the right $PREFIX id, or drop the id from it if there is no task."
+                return 1
+              fi
+              echo "::warning::Title mentions $id, but $PREFIX has no task with index ${id##*-} — skipping."
+              return 0
+            fi
+
+            # The filter matches on index alone, so confirm the task really is
+            # the one that was named before writing to it.
+            found=$(printf '%s' "$task" | jq -r '.identifier // empty')
+            if [ -n "$found" ] && [ "$found" != "$id" ]; then
+              echo "::warning::$id resolves to $found — leaving it alone."
+              return 0
+            fi
+
+            if [ "$ACTION" = "closed" ]; then
+              # Dropping into the done bucket sets the task's done flag as well,
+              # so there is no separate update needed here.
+              move_to "$num" "Done"
+              comment "$num" "Merged in $PR_URL — closing."
+              echo "Closed $id (task $num)."
+
+              # Same task we already fetched. This previously re-scanned the
+              # first-page listing, so linked issues stopped closing at exactly
+              # the same 50-task threshold.
+              close_linked_issue "$id" "$(printf '%s' "$task" | jq -r '.description // ""')"
+            else
+              move_to "$num" "Review"
+              # Only comment when the PR first appears, so reopening does not spam.
+              if [ "$ACTION" = "opened" ]; then
+                comment "$num" "PR opened: $PR_URL — $PR_TITLE"
+              fi
+              echo "Moved $id to Review (task $num)."
+            fi
+          }
+
+          if [ "$ACTION" = "closed" ] && [ "$MERGED" != "true" ]; then
+            echo "PR closed without merging — leaving $(printf '%s' "$IDS" | tr '\n' ' ') alone."
+            exit 0
           fi
+
+          # One bad id should not stop the others being synced, so the failure
+          # is recorded and re-raised after the loop rather than exiting inside
+          # it. Without that, a typo in the branch would leave the title's tasks
+          # half-synced and the run red, which is the worst of both.
+          FAILED=0
+          while IFS= read -r id; do
+            [ -z "$id" ] && continue
+            if [ "$id" = "$BRANCH_ID" ]; then
+              sync_task "$id" strict || FAILED=1
+            else
+              sync_task "$id" loose || FAILED=1
+            fi
+          done <<< "$IDS"
+
+          exit "$FAILED"
