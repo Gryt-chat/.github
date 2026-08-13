@@ -1,177 +1,122 @@
-<h3 align="center">
- <img src="https://raw.githubusercontent.com/Gryt-chat/client/main/public/logo.svg" width="100" alt="Logo"/><br/>
- <img src="" alt="" height="32" width="0px"/>
- Gryt Chat
- <img src="" alt="" height="32" width="0px"/>
-</h3>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Gryt-chat/client/main/public/logo.svg" width="88" alt="Gryt" />
+</p>
+
+<h1 align="center">Gryt</h1>
 
 <p align="center">
-Gryt is an open-source voice and text chat platform that values privacy and user control of data. With Gryt, users can host their own servers, giving them full control over their conversations and data. Gryt is a secure, private communication platform that empowers users to communicate freely while protecting their privacy.
+  Voice and text chat you host yourself.<br />
+  Your server, your hardware, your conversations.
 </p>
 
 <p align="center">
- <a href="https://github.com/Gryt-chat/gryt/blob/main/LICENSE">
-  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square" alt="AGPL-3.0 License"/>
- </a>
- <a href="https://github.com/Gryt-chat/gryt">
-  <img src="https://img.shields.io/github/stars/Gryt-chat/gryt?style=flat-square&color=yellow" alt="Stars"/>
- </a>
- <a href="https://github.com/Gryt-chat/gryt/pulls">
-  <img src="https://img.shields.io/github/issues-pr/Gryt-chat/gryt?style=flat-square&color=green" alt="Pull Requests"/>
- </a>
- <a href="https://github.com/Gryt-chat/gryt/issues">
-  <img src="https://img.shields.io/github/issues/Gryt-chat/gryt?style=flat-square&color=red" alt="Issues"/>
- </a>
+  <a href="https://github.com/Gryt-chat/gryt/releases"><img src="https://img.shields.io/github/v/release/Gryt-chat/gryt?include_prereleases&style=flat-square&label=release&color=968FF8" alt="Latest release" /></a>
+  <a href="https://github.com/Gryt-chat/gryt"><img src="https://img.shields.io/github/stars/Gryt-chat/gryt?style=flat-square&color=968FF8" alt="Stars" /></a>
+  <a href="https://github.com/Gryt-chat/gryt/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-968FF8?style=flat-square" alt="AGPL-3.0" /></a>
 </p>
 
 <p align="center">
- <a href="https://gryt.chat">Website</a> ·
- <a href="https://app.gryt.chat">Live App</a> ·
- <a href="https://docs.gryt.chat">Documentation</a> ·
- <a href="https://github.com/Gryt-chat/gryt">Source Code</a> ·
- <a href="https://github.com/Gryt-chat/gryt/issues/new?template=bug_report.md">Report a Bug</a> ·
- <a href="https://github.com/Gryt-chat/gryt/issues/new?template=feature_request.md">Request a Feature</a>
+  <a href="https://gryt.chat">Website</a> ·
+  <a href="https://app.gryt.chat">Try it</a> ·
+  <a href="https://docs.gryt.chat">Docs</a> ·
+  <a href="https://github.com/Gryt-chat/gryt/releases">Download</a>
 </p>
 
 ---
 
-> [!CAUTION]
-> **Early Development Stage** — This project is experimental and under active development. Expect breaking changes.
+### Why
 
----
-
-### Why Gryt?
-
-Most communication platforms today are owned by corporations that monetize your conversations, lock you into their ecosystem, and give you zero control over where your data lives. **Gryt exists to change that.**
-
-- **Self-hostable** — Run your own server. Your data stays on your hardware.
-- **Open source** — Every line is auditable. No telemetry, no tracking, no surprises.
-- **Full-featured** — Crystal-clear voice chat, persistent text messaging, file sharing — all in one platform.
-- **Modern stack** — Built with TypeScript, React, Go, and WebRTC for real-time performance.
-
----
-
-### What's Inside
+Most voice platforms are owned by companies that monetise the conversation and
+decide who gets to leave. Gryt is built the other way round — you run the
+server, the data sits on your disk, and nobody needs an account with us to talk
+to you.
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-**Core Platform** — [`gryt`](https://github.com/Gryt-chat/gryt)
+**No account required**
 
-A monorepo using git submodules containing everything you need:
-
-| Component | Repo | Built With |
-|-----------|------|-----------|
-| Web Client | [`packages/client`](https://github.com/Gryt-chat/client) | React · TypeScript · Vite · Electron |
-| Signaling Server | [`packages/server`](https://github.com/Gryt-chat/server) | Node.js · Express · Socket.IO |
-| SFU (Media Server) | [`packages/sfu`](https://github.com/Gryt-chat/sfu) | Go · Pion WebRTC |
-| Auth | [`packages/auth`](https://github.com/Gryt-chat/auth) | Keycloak · OIDC |
-| Docs | [`packages/docs`](https://github.com/Gryt-chat/docs) | Next.js · Fumadocs |
-| Landing Page | [`packages/site`](https://github.com/Gryt-chat/site) | React · Vite |
+A server chooses which identities it admits. Guests hold a keypair on their own
+device. An account carries your identity *between* servers — it is not the price
+of entry.
 
 </td>
 <td width="50%" valign="top">
 
-**Deployment Options**
+**Real-time voice**
 
-| Method | Best For |
-|--------|----------|
-| [Docker Compose](https://docs.gryt.chat/docs/deployment/docker-compose) | Quick self-hosting |
-| [Helm Chart](https://github.com/Gryt-chat/gryt/tree/main/ops/helm/gryt) | Kubernetes clusters |
-| [Cloudflare Tunnel](https://docs.gryt.chat/docs/deployment/cloudflare-tunnel) | Tunneled hosting |
-| [Dev Scripts](https://docs.gryt.chat/docs/guide/quick-start) | Local development |
+Go and Pion WebRTC relay audio without transcoding. Noise suppression, echo
+cancellation and voice activity detection run on the client.
 
-Get started in one command:
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**Yours to run**
+
+Docker Compose, Helm, or a Cloudflare Tunnel. One compose file can host as many
+servers as you like — they share an SFU.
+
+</td>
+<td valign="top">
+
+**Desktop and web**
+
+Electron app for Linux, macOS and Windows with auto-updates, plus a browser
+client. The desktop app can host a server on its own.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**Files and messages**
+
+Persistent chat backed by SQLite, uploads to any S3-compatible store, and
+thumbnails generated out of process so a bad image cannot take the server down.
+
+</td>
+<td valign="top">
+
+**Open about how it is built**
+
+Gryt is developed partly with AI assistance. The
+[policy](https://docs.gryt.chat/docs/guide/ai) says which parts of the codebase
+never merge without a human reading the whole diff.
+
+</td>
+</tr>
+</table>
+
+---
+
+### Get started
 
 ```bash
 git clone --recurse-submodules https://github.com/Gryt-chat/gryt.git
 cd gryt && ./ops/start_dev.sh
 ```
 
-</td>
-</tr>
-</table>
+Or read the [deployment guide](https://docs.gryt.chat/docs/deployment/docker-compose)
+to put it on a real machine.
 
-Pre-built Docker images are published to GitHub Container Registry:
+### Repositories
 
-| Image | Purpose |
-|-------|---------|
-| `ghcr.io/gryt-chat/server` | Signaling, chat, file uploads |
-| `ghcr.io/gryt-chat/sfu` | WebRTC media forwarding |
-| `ghcr.io/gryt-chat/client` | Web UI (browser access) |
+| | | |
+|---|---|---|
+| [`gryt`](https://github.com/Gryt-chat/gryt) | Monorepo, ops, releases | Shell |
+| [`client`](https://github.com/Gryt-chat/client) | Desktop and web app | React · Electron |
+| [`server`](https://github.com/Gryt-chat/server) | Signalling, chat, uploads | Node · Socket.IO |
+| [`sfu`](https://github.com/Gryt-chat/sfu) | Media relay | Go · Pion |
+| [`auth`](https://github.com/Gryt-chat/auth) | Accounts, optional | Keycloak |
+| [`image-worker`](https://github.com/Gryt-chat/image-worker) | Thumbnails | Sharp |
+| [`ui`](https://github.com/Gryt-chat/ui) · [`docs`](https://github.com/Gryt-chat/docs) · [`site`](https://github.com/Gryt-chat/site) | Components, docs, landing page | |
 
----
-
-### Features
-
-<table>
-<tr>
-<td width="33%" align="center">
-<h4>Voice Chat</h4>
-<p>WebRTC-powered real-time audio with noise suppression, echo cancellation, voice activity detection, and a configurable audio pipeline.</p>
-</td>
-<td width="33%" align="center">
-<h4>Text & Files</h4>
-<p>Persistent messaging backed by ScyllaDB with file uploads, image thumbnails, and S3-compatible object storage.</p>
-</td>
-<td width="33%" align="center">
-<h4>Multi-Server</h4>
-<p>Connect to multiple self-hosted servers simultaneously and switch between them seamlessly from a single client.</p>
-</td>
-</tr>
-<tr>
-<td width="33%" align="center">
-<h4>Privacy First</h4>
-<p>Self-host everything. Your messages, files, and voice data never touch a third-party server unless you choose to.</p>
-</td>
-<td width="33%" align="center">
-<h4>Desktop & Web</h4>
-<p>Clean, accessible interface built with Radix UI. Dark and light themes, responsive layout, and an Electron desktop app with auto-updates for Linux, macOS, and Windows.</p>
-</td>
-<td width="33%" align="center">
-<h4>Easy Deployment</h4>
-<p>Docker Compose for quick setups, Helm charts for Kubernetes, Cloudflare Tunnels for easy access, and comprehensive <a href="https://docs.gryt.chat">docs</a> to guide you through production deployment.</p>
-</td>
-</tr>
-</table>
-
----
-
-### Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web Client    │    │  Gryt Server    │    │   SFU Server    │
-│   (React/TS)    │◄──►│ (Node.js/Express)│◄──►│     (Go)        │
-│                 │    │                 │    │                 │
-│ • Voice UI      │    │ • Signaling     │    │ • Media Relay   │
-│ • Audio Proc.   │    │ • Persistence   │    │ • WebRTC        │
-│ • Multi-Server  │    │ • File Uploads  │    │ • Track Mgmt    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                      │                      │
-         │              ┌───────┴───────┐              │
-         │              │   ScyllaDB    │              │
-         │              │   + MinIO/S3  │              │
-         │              └───────────────┘              │
-         │                                             │
-         └──────────── WebRTC Media (UDP) ─────────────┘
-```
-
----
-
-### Contributing
-
-We welcome contributions of all kinds — code, documentation, bug reports, and feature ideas.
-
-1. **Fork** the repo and create your branch from `main`
-2. **Make** your changes and ensure tests pass
-3. **Open** a pull request with a clear description of what you've done
-
-Check out the [contributing guide](https://docs.gryt.chat/docs/guide/contributing), browse the [issue tracker](https://github.com/Gryt-chat/gryt/issues) for open issues, or create a [feature request](https://github.com/Gryt-chat/gryt/issues/new?template=feature_request.md) if you have an idea.
-
----
+> [!NOTE]
+> Gryt is in beta. Breaking changes happen between releases.
 
 <p align="center">
- <sub>Made with care by the Gryt community · Licensed under <a href="https://github.com/Gryt-chat/gryt/blob/main/LICENSE">AGPL-3.0</a></sub>
+  <sub>AGPL-3.0 · Built in Norway · <a href="https://docs.gryt.chat/docs/guide/contributing">Contributing</a></sub>
 </p>
