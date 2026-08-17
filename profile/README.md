@@ -120,8 +120,11 @@ to put it on a real machine.
 ### Sponsors
 
 <!-- sponsors:start -->
+<!-- Monthly sponsors only, which is what the $25 and $500 tiers promise. A
+     one-off payment is credited in the release notes and listed on
+     gryt.chat/sponsors, not here. -->
 
-**Sponsored once** — Carlo, March 2026.
+Nobody sponsoring monthly yet.
 
 <!-- sponsors:end -->
 
