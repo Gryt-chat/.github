@@ -117,6 +117,23 @@ to put it on a real machine.
 > [!NOTE]
 > Gryt is in beta. Breaking changes happen between releases.
 
+### Sponsors
+
+Gryt is one person's project, and some of the bills are not optional — a domain, a
+box to run the auth stack on, and the Apple and Windows signing certificates that
+stop the installer warning people off their own download.
+[GitHub Sponsors](https://github.com/sponsors/Gryt-chat) covers those. It is the only
+money Gryt takes; there is nothing to buy in the app and nothing to unlock.
+
+<!-- sponsors:start -->
+
+Nobody yet. This is where names go.
+
+<!-- sponsors:end -->
+
+Names are listed from $25 a month, and a logo goes on [gryt.chat](https://gryt.chat)
+from $100. Nothing about you is published without asking first.
+
 <p align="center">
   <sub>AGPL-3.0 · Built in Norway · <a href="https://docs.gryt.chat/docs/guide/contributing">Contributing</a></sub>
 </p>
