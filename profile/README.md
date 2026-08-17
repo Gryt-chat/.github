@@ -127,7 +127,9 @@ of it is held back for people who pay.
 
 <!-- sponsors:start -->
 
-Nobody yet. This is where names go.
+**Sponsored once** — Carlo, March 2026.
+
+Nobody is sponsoring monthly yet. That list goes here when there is one.
 
 <!-- sponsors:end -->
 
