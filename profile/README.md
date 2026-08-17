@@ -117,6 +117,21 @@ to put it on a real machine.
 > [!NOTE]
 > Gryt is in beta. Breaking changes happen between releases.
 
+### Sponsors
+
+<!-- sponsors:start -->
+<!-- Monthly sponsors only, which is what the $25 and $500 tiers promise. A
+     one-off payment is credited in the release notes and listed on
+     gryt.chat/sponsors, not here. -->
+
+Nobody sponsoring monthly yet.
+
+<!-- sponsors:end -->
+
+What sponsoring pays for, the tiers, and everyone who has sponsored:
+[gryt.chat/sponsors](https://gryt.chat/sponsors) ·
+[Sponsor Gryt](https://github.com/sponsors/Gryt-chat)
+
 <p align="center">
   <sub>AGPL-3.0 · Built in Norway · <a href="https://docs.gryt.chat/docs/guide/contributing">Contributing</a></sub>
 </p>
