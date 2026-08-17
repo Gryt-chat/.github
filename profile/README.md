@@ -119,24 +119,15 @@ to put it on a real machine.
 
 ### Sponsors
 
-Sponsoring pays for a domain, the box the auth stack runs on, and the Apple and
-Windows signing certificates that stop the installer warning people off their own
-download. That is the whole list — there is nothing to buy inside Gryt, and no part
-of it is held back for people who pay.
-[GitHub Sponsors](https://github.com/sponsors/Gryt-chat) is where it goes.
-
 <!-- sponsors:start -->
 
 **Sponsored once** — Carlo, March 2026.
 
-Nobody is sponsoring monthly yet. That list goes here when there is one.
-
 <!-- sponsors:end -->
 
-Names are listed from $25 a month, and a logo goes on [gryt.chat](https://gryt.chat)
-from $100. Everyone who has sponsored, including one-off payments, is at
-[gryt.chat/sponsors](https://gryt.chat/sponsors). Nothing is published without asking
-first.
+What sponsoring pays for, the tiers, and everyone who has sponsored:
+[gryt.chat/sponsors](https://gryt.chat/sponsors) ·
+[Sponsor Gryt](https://github.com/sponsors/Gryt-chat)
 
 <p align="center">
   <sub>AGPL-3.0 · Built in Norway · <a href="https://docs.gryt.chat/docs/guide/contributing">Contributing</a></sub>
