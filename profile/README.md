@@ -110,6 +110,7 @@ to put it on a real machine.
 | [`client`](https://github.com/Gryt-chat/client) | Desktop and web app | React · Electron |
 | [`server`](https://github.com/Gryt-chat/server) | Signalling, chat, uploads | Node · Socket.IO |
 | [`sfu`](https://github.com/Gryt-chat/sfu) | Media relay | Go · Pion |
+| [`voice`](https://github.com/Gryt-chat/voice) | Voice engine shared by the apps | TypeScript |
 | [`auth`](https://github.com/Gryt-chat/auth) | Accounts, optional | Keycloak |
 | [`image-worker`](https://github.com/Gryt-chat/image-worker) | Thumbnails | Sharp |
 | [`cli`](https://github.com/Gryt-chat/cli) | Terminal server manager | Go · Bubble Tea |
