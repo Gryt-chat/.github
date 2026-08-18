@@ -112,6 +112,7 @@ to put it on a real machine.
 | [`sfu`](https://github.com/Gryt-chat/sfu) | Media relay | Go · Pion |
 | [`auth`](https://github.com/Gryt-chat/auth) | Accounts, optional | Keycloak |
 | [`image-worker`](https://github.com/Gryt-chat/image-worker) | Thumbnails | Sharp |
+| [`cli`](https://github.com/Gryt-chat/cli) | Terminal server manager | Go · Bubble Tea |
 | [`ui`](https://github.com/Gryt-chat/ui) · [`docs`](https://github.com/Gryt-chat/docs) · [`site`](https://github.com/Gryt-chat/site) | Components, docs, landing page | |
 
 > [!NOTE]
