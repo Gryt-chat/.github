@@ -5,7 +5,7 @@
 <h1 align="center">Gryt</h1>
 
 <p align="center">
-  Voice and text chat you host yourself.<br />
+  Voice, video and text chat you host yourself.<br />
   Your server, your hardware, your conversations.
 </p>
 
@@ -44,10 +44,11 @@ of entry.
 </td>
 <td width="50%" valign="top">
 
-**Real-time voice**
+**Real-time voice and video**
 
-Go and Pion WebRTC relay audio without transcoding. Noise suppression, echo
-cancellation and voice activity detection run on the client.
+Go and Pion WebRTC relay voice, camera and screen share without transcoding.
+Noise suppression, echo cancellation and voice activity detection run on the
+client.
 
 </td>
 </tr>
@@ -109,7 +110,7 @@ to put it on a real machine.
 | [`gryt`](https://github.com/Gryt-chat/gryt) | Monorepo, ops, releases | Shell |
 | [`client`](https://github.com/Gryt-chat/client) | Desktop and web app | React · Electron |
 | [`server`](https://github.com/Gryt-chat/server) | Signalling, chat, uploads | Node · Socket.IO |
-| [`sfu`](https://github.com/Gryt-chat/sfu) | Media relay | Go · Pion |
+| [`sfu`](https://github.com/Gryt-chat/sfu) | Voice, camera and screen-share relay | Go · Pion |
 | [`voice`](https://github.com/Gryt-chat/voice) | Voice engine shared by the apps | TypeScript |
 | [`auth`](https://github.com/Gryt-chat/auth) | Accounts, optional | Keycloak |
 | [`image-worker`](https://github.com/Gryt-chat/image-worker) | Thumbnails | Sharp |
