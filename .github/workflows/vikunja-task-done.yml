@@ -146,8 +146,22 @@ jobs:
               -d "$(jq -nc --argjson t "$1" '{task_id:$t}')" >/dev/null \
               || echo "::warning::Could not move task into '$2'."
           }
+          # Read the task, set done on it, send the whole thing back.
+          #
+          # POST /tasks/{id} in Vikunja is a full update rather than a patch, so
+          # posting {"done": true} on its own cleared every other field. Tasks
+          # closed by this workflow came out with an empty description, which is
+          # the one place the project keeps the context behind a change: a merged
+          # PR drops off the open list, and if closing the task erases the notes
+          # too then what was carefully written down is gone from both.
           mark_done() {
-            api -X POST "$VIKUNJA_URL/tasks/$1" -d '{"done": true}' >/dev/null \
+            local task
+            task=$(api "$VIKUNJA_URL/tasks/$1") || {
+              echo "::warning::Could not read task $1 — leaving the done flag alone."
+              return 0
+            }
+            printf '%s' "$task" | jq -c '.done = true' \
+              | api -X POST "$VIKUNJA_URL/tasks/$1" -d @- >/dev/null \
               || echo "::warning::Could not set the done flag."
           }
           comment() {
