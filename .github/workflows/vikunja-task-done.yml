@@ -146,6 +146,10 @@ jobs:
               -d "$(jq -nc --argjson t "$1" '{task_id:$t}')" >/dev/null \
               || echo "::warning::Could not move task into '$2'."
           }
+          mark_done() {
+            api -X POST "$VIKUNJA_URL/tasks/$1" -d '{"done": true}' >/dev/null \
+              || echo "::warning::Could not set the done flag."
+          }
           comment() {
             api -X PUT "$VIKUNJA_URL/tasks/$1/comments" -d "$(jq -nc --arg c "$2" '{comment:$c}')" >/dev/null \
               || echo "::warning::Comment failed."
@@ -294,9 +298,17 @@ jobs:
             fi
 
             if [ "$ACTION" = "closed" ]; then
-              # Dropping into the done bucket sets the task's done flag as well,
-              # so there is no separate update needed here.
+              # The move and the done flag are two writes, not one.
+              #
+              # This used to do only the move, on the assumption that dropping
+              # a task into the done bucket marks it done. It does not, and the
+              # run stayed green either way, so the board looked right while
+              # every task it closed still reported done: false. Measured on
+              # 2026-08-18: thirteen tasks sat in Done unflagged, including
+              # every one this workflow had closed. They read as finished on the
+              # board and as open to anything filtering on done.
               move_to "$num" "Done"
+              mark_done "$num"
               comment "$num" "Merged in $PR_URL — closing."
               echo "Closed $id (task $num)."
 
