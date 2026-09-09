@@ -1,0 +1,166 @@
+name: API reference
+
+# Reusable workflow. Callers name which of the four sides they are:
+#
+#   on:
+#     pull_request:
+#       paths: [src/**]
+#   jobs:
+#     reference:
+#       uses: Gryt-chat/.github/.github/workflows/api-reference.yml@main
+#       with:
+#         component: bot
+#
+# Three pages in `docs` are generated from doc comments in server, client and bot,
+# so editing a comment here leaves a page over there describing something gone.
+
+# The superproject has run this on a schedule since GRYT-950, which is the only
+# place that can see all four. It reports hours later, in a repository nobody
+# touched, naming a page in a third one. GRYT-1096 and GRYT-1099 were both that.
+
+# Its schedule stays as the backstop for anything merged out of order. This is the
+# same check, on the pull request that causes it.
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: Which side the calling repository is — server, client, bot or docs
+        required: true
+        type: string
+      superproject:
+        description: Repository holding the generator
+        required: false
+        type: string
+        default: Gryt-chat/gryt
+      owner:
+        description: Organisation the four sides are cloned from
+        required: false
+        type: string
+        default: Gryt-chat
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-reference-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: Compare the reference pages against the source
+    runs-on: ubuntu-latest
+
+    steps:
+      # A typo here would otherwise clone a repository that does not exist and fail
+      # somewhere less obvious, or silently check the caller against itself.
+      - name: Check the component names a side
+        shell: bash
+        run: |
+          case "${{ inputs.component }}" in
+            server|client|bot|docs) ;;
+            *)
+              echo "::error::component is '${{ inputs.component }}'; it must be server, client, bot or docs"
+              exit 1
+              ;;
+          esac
+
+      # Straight into its slot, so the check reads what this pull request proposes
+      # rather than what is already on main.
+      - name: Check out this repository
+        uses: actions/checkout@v4
+        with:
+          path: work/packages/${{ inputs.component }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Fetch the generator
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Only .github/scripts. The generator resolves everything from its own
+          # location, so the layout below has to look like the superproject's.
+          git clone --quiet --filter=blob:none --no-checkout \
+            "https://github.com/${{ inputs.superproject }}.git" work/superproject
+          git -C work/superproject checkout --quiet origin/main -- .github/scripts
+
+          mkdir -p work/.github
+          mv work/superproject/.github/scripts work/.github/scripts
+          rm -rf work/superproject
+
+          echo "${{ inputs.superproject }}: $(ls work/.github/scripts | wc -l) scripts"
+
+      - name: Clone the other three sides
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Each repository's own main, which is what ships. A path-limited blobless
+          # clone fetches the few blobs each side needs and nothing else.
+
+          # docs takes the whole content tree because the generator writes into it and
+          # diffs what it wrote, and server all of src for the socket coverage check.
+          for entry in \
+            "server:src" \
+            "client:src/packages/addons/src" \
+            "bot:src" \
+            "docs:content/docs"
+          do
+            repo="${entry%%:*}"
+            path="${entry#*:}"
+
+            if [ "$repo" = "${{ inputs.component }}" ]; then
+              continue
+            fi
+
+            git clone --quiet --filter=blob:none --no-checkout \
+              "https://github.com/${{ inputs.owner }}/${repo}.git" "work/packages/${repo}"
+            git -C "work/packages/${repo}" checkout --quiet origin/main -- "${path}"
+            echo "${repo}: $(git -C "work/packages/${repo}" rev-parse --short origin/main)"
+          done
+
+      - name: Install the parser
+        shell: bash
+        working-directory: work
+        run: |
+          set -euo pipefail
+
+          # The generator reads TypeScript with the compiler's own parser rather than
+          # regexes, so it needs the package. It looks under packages/{docs,client,
+          # server,site} and takes the first that answers.
+
+          # site, because it is the one of those four this workflow never checks out,
+          # so there is no package.json for `npm i` to read and install the whole of.
+          mkdir -p packages/site
+          npm install --no-save --prefix packages/site typescript@5
+
+      - name: Compare
+        id: compare
+        shell: bash
+        working-directory: work
+        run: node .github/scripts/generate-api-reference.mjs --check
+
+      # What --check will not print. Both times this fired, the next hour went on
+      # rebuilding the layout above by hand just to see which lines had moved.
+      - name: Show what the pages should say
+        if: failure() && steps.compare.outcome == 'failure'
+        shell: bash
+        working-directory: work
+        run: |
+          set -euo pipefail
+          node .github/scripts/generate-api-reference.mjs
+          echo "::group::What the generator would write"
+          git -C packages/docs --no-pager diff -- content/docs/build || true
+          echo "::endgroup::"
+          echo "::notice::Run this in a monorepo checkout, commit packages/docs, and land that before this."
+
+      # server-api is the one reference page still written by hand. It had reached
+      # 114 of 211 socket events, with whole features missing, before anybody counted.
+      - name: Check the socket API is still fully described
+        if: inputs.component == 'server' || inputs.component == 'docs'
+        shell: bash
+        working-directory: work
+        run: node .github/scripts/check-socket-coverage.mjs
