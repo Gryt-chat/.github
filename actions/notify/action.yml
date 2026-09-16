@@ -1,0 +1,36 @@
+name: Post a notification to Discord and Gryt
+description: >-
+  Posts a Discord webhook payload to Discord, and the same message to a Gryt
+  webhook as cards. Either URL can be empty, and a failed post never fails the job.
+
+# Callers build the Discord payload as before and hand it over:
+#
+#   - uses: Gryt-chat/.github/actions/notify@main
+#     with:
+#       payload: ${{ steps.announcement.outputs.payload }}
+#       discord-webhook-url: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+#       gryt-webhook-url: ${{ secrets.GRYT_RELEASE_WEBHOOK_URL }}
+
+inputs:
+  payload:
+    description: A Discord webhook payload, as JSON
+    required: true
+  discord-webhook-url:
+    description: Where Discord gets it. Empty skips Discord
+    required: false
+    default: ""
+  gryt-webhook-url:
+    description: Where Gryt gets it. Empty skips Gryt
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Post to Discord and Gryt
+      shell: bash
+      env:
+        NOTIFY_PAYLOAD: ${{ inputs.payload }}
+        NOTIFY_DISCORD_URL: ${{ inputs.discord-webhook-url }}
+        NOTIFY_GRYT_URL: ${{ inputs.gryt-webhook-url }}
+      run: bash "$GITHUB_ACTION_PATH/notify.sh"

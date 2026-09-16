@@ -21,7 +21,9 @@ name: Discord CI notification
 # it — an unlisted workflow silently never notifies, which is the worst way for
 # this to break. Add new workflows to the caller's list as you add them.
 #
-# Needs the org secret DISCORD_CI_WEBHOOK_URL.
+# #ci exists on Discord and on the Gryt community server, and each gets the same
+# message. The org secrets are DISCORD_CI_WEBHOOK_URL and GRYT_CI_WEBHOOK_URL,
+# and a repository that can't see one of them skips that one.
 
 on:
   workflow_call:
@@ -33,15 +35,19 @@ on:
         default: "#ci"
     secrets:
       DISCORD_CI_WEBHOOK_URL:
-        required: true
+        required: false
+      GRYT_CI_WEBHOOK_URL:
+        required: false
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Post failure or recovery to Discord
+      - name: Decide whether this run is worth a message
+        id: message
         env:
-          WEBHOOK_URL: ${{ secrets.DISCORD_CI_WEBHOOK_URL }}
+          HAS_DISCORD: ${{ secrets.DISCORD_CI_WEBHOOK_URL != '' }}
+          HAS_GRYT: ${{ secrets.GRYT_CI_WEBHOOK_URL != '' }}
           GH_TOKEN: ${{ github.token }}
           CHANNEL: ${{ inputs.channel_name }}
           REPO: ${{ github.event.repository.full_name }}
@@ -58,8 +64,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "$WEBHOOK_URL" ]; then
-            echo "DISCORD_CI_WEBHOOK_URL secret not set — skipping"
+          if [ "$HAS_DISCORD" != "true" ] && [ "$HAS_GRYT" != "true" ]; then
+            echo "Neither DISCORD_CI_WEBHOOK_URL nor GRYT_CI_WEBHOOK_URL is set — skipping"
             exit 0
           fi
 
@@ -126,11 +132,14 @@ jobs:
               }]
             }')
 
-          # Don't fail the notifier when Discord is unhappy — a broken alert path
-          # shouldn't also show up as a second red run.
-          curl -sS --fail-with-body --max-time 30 \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" "$WEBHOOK_URL" \
-            || echo "::warning::Could not post to Discord."
+          echo "payload=$(printf '%s' "$PAYLOAD" | jq -c .)" >> "$GITHUB_OUTPUT"
+          echo "Reporting '$STATE' for $WF_NAME on $BRANCH."
 
-          echo "Reported '$STATE' for $WF_NAME on $BRANCH."
+      # The action never fails the job, so a broken alert path doesn't show up as a second red run.
+      - name: Post it to Discord and Gryt
+        if: steps.message.outputs.payload != ''
+        uses: Gryt-chat/.github/actions/notify@main
+        with:
+          payload: ${{ steps.message.outputs.payload }}
+          discord-webhook-url: ${{ secrets.DISCORD_CI_WEBHOOK_URL }}
+          gryt-webhook-url: ${{ secrets.GRYT_CI_WEBHOOK_URL }}
