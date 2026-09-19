@@ -12,12 +12,16 @@ check() {
   local file="$tmp/$name.json"
   cat > "$file"
   payload="$(bash "$here/build-payload.sh" "$event" "$file" "Gryt-chat/example" "fallback")"
-  jq -e --arg expected "$expected" '.embeds[0].title | contains($expected)' <<<"$payload" >/dev/null
-  jq -e '.embeds[0].fields | length >= 2' <<<"$payload" >/dev/null
+
+  jq -e --arg expected "$expected" '.display_name == "GitHub" and (.cards[0].title | contains($expected))' <<<"$payload" >/dev/null
+  jq -e '.cards[0].author.name == "Gryt-chat/example"' <<<"$payload" >/dev/null
+  jq -e '.cards[0].color | test("^#[0-9a-f]{6}$"; "i")' <<<"$payload" >/dev/null
+  jq -e '.cards[0].fields | length >= 1' <<<"$payload" >/dev/null
+  jq -e '.cards[0].timestamp | test("Z$")' <<<"$payload" >/dev/null
 }
 
 check push push "2 commits pushed" <<'JSON'
-{"ref":"refs/heads/main","deleted":false,"compare":"https://github.com/Gryt-chat/example/compare/a...b","sender":{"login":"alice"},"repository":{"full_name":"Gryt-chat/example","html_url":"https://github.com/Gryt-chat/example"},"commits":[{"id":"1111111aaaa","message":"one","author":{"username":"alice"}},{"id":"2222222bbbb","message":"two","author":{"name":"Bob"}}]}
+{"ref":"refs/heads/main","created":false,"deleted":false,"compare":"https://github.com/Gryt-chat/example/compare/a...b","sender":{"login":"alice"},"repository":{"full_name":"Gryt-chat/example","html_url":"https://github.com/Gryt-chat/example"},"commits":[{"id":"1111111aaaa","message":"one","author":{"username":"alice"}},{"id":"2222222bbbb","message":"two","author":{"name":"Bob"}}]}
 JSON
 
 check merged pull_request_target "PR #42 merged" <<'JSON'
