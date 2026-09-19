@@ -106,18 +106,7 @@ jobs:
               --jq '[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "- " + .name][:5] | join("\n")' \
               2>/dev/null || echo "")
             if [[ -n "$FAILED_JOBS" ]]; then
-              DETAILS="**Failed jobs**"
-
-      # The action never fails the job, so a broken alert path doesn't show up as a second red run.
-      - name: Post it to Discord and Gryt
-        if: steps.message.outputs.payload != ''
-        uses: Gryt-chat/.github/actions/notify@main
-        with:
-          payload: ${{ steps.message.outputs.payload }}
-          gryt-payload: ${{ steps.message.outputs.gryt_payload }}
-          discord-webhook-url: ${{ secrets.DISCORD_CI_WEBHOOK_URL }}
-          gryt-webhook-url: ${{ secrets.GRYT_CI_WEBHOOK_URL }}
-\n'"$FAILED_JOBS"
+              printf -v DETAILS '**Failed jobs**\n%s' "$FAILED_JOBS"
             fi
           else
             TITLE="✅ $WF_NAME is green again"
@@ -206,5 +195,6 @@ jobs:
         uses: Gryt-chat/.github/actions/notify@main
         with:
           payload: ${{ steps.message.outputs.payload }}
+          gryt-payload: ${{ steps.message.outputs.gryt_payload }}
           discord-webhook-url: ${{ secrets.DISCORD_CI_WEBHOOK_URL }}
           gryt-webhook-url: ${{ secrets.GRYT_CI_WEBHOOK_URL }}
