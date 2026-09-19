@@ -177,10 +177,9 @@ case "$event_name" in
     discussion_title="$(jq_raw '.discussion.title')"
     url="$(jq_raw '.discussion.html_url')"
     case "$action" in
-      created)  title="Discussion #$number created" ;;
-      answered) title="Discussion #$number answered"; color="#3fb27f" ;;
-      closed)   title="Discussion #$number closed"; color="#3fb27f" ;;
-      reopened) title="Discussion #$number reopened" ;;
+      created)    title="Discussion #$number created" ;;
+      answered)   title="Discussion #$number answered"; color="#3fb27f" ;;
+      unanswered) title="Answer removed from discussion #$number" ;;
       *)        title="Discussion #$number ${action:-changed}" ;;
     esac
     description="**$discussion_title**"
