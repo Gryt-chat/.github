@@ -12,6 +12,8 @@ jq -e '.gryt.cards[0].title == "Client v1.2.3-beta.1"' <<<"$payload" >/dev/null
 jq -e '.gryt.cards[0].color == "#f5a524"' <<<"$payload" >/dev/null
 jq -e '.gryt.cards[0].description | contains("**Highlights**")' <<<"$payload" >/dev/null
 jq -e '.gryt.cards[0].description | contains("Fix voice reconnect")' <<<"$payload" >/dev/null
+jq -e '.gryt.cards[0].description | contains("**Client:**")' <<<"$payload" >/dev/null
+jq -e '.gryt.cards[0].description | contains("[#1](https://github.com/Gryt-chat/client/pull/1)")' <<<"$payload" >/dev/null
 jq -e '.gryt.cards[0].description | contains("This fifth item") | not' <<<"$payload" >/dev/null
 jq -e '.gryt.cards[0].fields | length == 3' <<<"$payload" >/dev/null
 jq -e '.discord.embeds[0].description == .gryt.cards[0].description' <<<"$payload" >/dev/null
