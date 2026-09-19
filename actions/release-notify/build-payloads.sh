@@ -55,8 +55,8 @@ case "$component" in
     ;;
 esac
 
-if printf '%s\n' "$body" | grep -Eq '^## What'; then
-  highlights="$(printf '%s\n' "$body" | awk '
+if grep -Eq '^## What' <<<"$body"; then
+  highlights="$(awk '
     /^## What/ { in_changes = 1; next }
     !in_changes { next }
     /^\*\*Full changelogs\*\*/ { exit }
@@ -68,9 +68,9 @@ if printf '%s\n' "$body" | grep -Eq '^## What'; then
       count++
       if (count >= 4) exit
     }
-  ')"
+  ' <<<"$body")"
 else
-  highlights="$(printf '%s\n' "$body" | awk '
+  highlights="$(awk '
     /^\*\*Full changelogs\*\*/ { exit }
     /^### Checking/ { exit }
     /^[*-] / {
@@ -79,14 +79,14 @@ else
       count++
       if (count >= 4) exit
     }
-  ')"
+  ' <<<"$body")"
 fi
 
 description="$summary"
 if [[ -n "$highlights" ]]; then
   description="$description"$'\n\n'"**Highlights**"$'\n'"$highlights"
 fi
-description="$(printf '%s' "$description" | head -c 3000)"
+description="${description:0:3000}"
 
 discord_title="$(printf '%s %s release' "$(tr '[:lower:]' '[:upper:]' <<<"$channel_label")" "$component")"
 
