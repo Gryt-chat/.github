@@ -56,31 +56,53 @@ case "$component" in
 esac
 
 if grep -Eq '^## What' <<<"$body"; then
-  highlights="$(awk '
+  raw_highlights="$(awk '
     /^## What/ { in_changes = 1; next }
     !in_changes { next }
-    /^\*\*Full changelogs\*\*/ { exit }
+    tolower($0) ~ /^\*\*full changelog/ { exit }
     /^## / { if (count > 0) exit }
     /^### Checking/ { exit }
+    /^### / {
+      section = $0
+      sub(/^### /, "", section)
+      next
+    }
     /^[*-] / {
-      sub(/^[*-] /, "- ")
-      print
+      line = $0
+      sub(/^[*-] /, "", line)
+      if (section != "") print "- **" section ":** " line
+      else print "- " line
       count++
       if (count >= 4) exit
     }
   ' <<<"$body")"
 else
-  highlights="$(awk '
-    /^\*\*Full changelogs\*\*/ { exit }
+  raw_highlights="$(awk '
+    tolower($0) ~ /^\*\*full changelog/ { exit }
+    /^## / { if (count > 0) exit }
     /^### Checking/ { exit }
     /^[*-] / {
-      sub(/^[*-] /, "- ")
-      print
+      line = $0
+      sub(/^[*-] /, "", line)
+      print "- " line
       count++
       if (count >= 4) exit
     }
   ' <<<"$body")"
 fi
+
+highlights=""
+while IFS= read -r line; do
+  [[ -n "$line" ]] || continue
+  if [[ "$line" =~ ^(.*)[[:space:]]in[[:space:]](https://github.com/[^[:space:]]+/pull/([0-9]+))$ ]]; then
+    line="${BASH_REMATCH[1]} ([#${BASH_REMATCH[3]}](${BASH_REMATCH[2]}))"
+  fi
+  if [[ -z "$highlights" ]]; then
+    highlights="$line"
+  else
+    printf -v highlights '%s\n%s' "$highlights" "$line"
+  fi
+done <<<"$raw_highlights"
 
 description="$summary"
 if [[ -n "$highlights" ]]; then
