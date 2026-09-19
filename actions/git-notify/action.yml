@@ -1,0 +1,33 @@
+name: Post GitHub activity to Gryt
+description: Build a compact card for ordinary GitHub activity and post it to a Gryt webhook.
+
+inputs:
+  gryt-webhook-url:
+    description: Gryt incoming webhook URL. Empty skips the notification.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Build GitHub activity card
+      id: message
+      if: inputs.gryt-webhook-url != ''
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        REPOSITORY: ${{ github.repository }}
+        ACTOR: ${{ github.actor }}
+      run: |
+        set -euo pipefail
+        PAYLOAD="$(bash "$GITHUB_ACTION_PATH/build-payload.sh" "$EVENT_NAME" "$GITHUB_EVENT_PATH" "$REPOSITORY" "$ACTOR")"
+        if [[ -n "$PAYLOAD" ]]; then
+          echo "payload=$PAYLOAD" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Post GitHub activity to Gryt
+      if: steps.message.outputs.payload != ''
+      uses: Gryt-chat/.github/actions/notify@main
+      with:
+        payload: ${{ steps.message.outputs.payload }}
+        gryt-webhook-url: ${{ inputs.gryt-webhook-url }}
