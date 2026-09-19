@@ -18,7 +18,7 @@ valid_object() {
 post() {
   local name="$1" url="$2" body="$3" reply code
   reply="$(mktemp)"
-  code="$(printf '%s' "$body" | curl -sS -o "$reply" -w '%{http_code}' --max-time 30     -H 'Content-Type: application/json' --data-binary @- "$url")" || true
+  code="$(printf '%s' "$body" | curl -sS --location --post301 --post302 --post303 --max-redirs 5 -o "$reply" -w '%{http_code}' --max-time 30     -H 'Content-Type: application/json' --data-binary @- "$url")" || true
 
   if [[ "$code" == 2* ]]; then
     echo "$name: posted (HTTP $code)."
