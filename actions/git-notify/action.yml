@@ -1,5 +1,5 @@
 name: Post GitHub activity to Gryt
-description: Build a compact card for ordinary GitHub activity and post it to a Gryt webhook.
+description: Build a native Gryt WebhookCard payload for ordinary GitHub activity.
 
 inputs:
   gryt-webhook-url:
@@ -10,7 +10,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Build GitHub activity card
+    - name: Build native Gryt activity card
       id: message
       if: inputs.gryt-webhook-url != ''
       shell: bash
@@ -29,5 +29,5 @@ runs:
       if: steps.message.outputs.payload != ''
       uses: Gryt-chat/.github/actions/notify@main
       with:
-        payload: ${{ steps.message.outputs.payload }}
+        gryt-payload: ${{ steps.message.outputs.payload }}
         gryt-webhook-url: ${{ inputs.gryt-webhook-url }}
