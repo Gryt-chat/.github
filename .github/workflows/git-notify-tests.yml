@@ -1,0 +1,19 @@
+name: Git notify action tests
+
+on:
+  pull_request:
+    paths:
+      - actions/git-notify/**
+      - .github/workflows/git-notify-tests.yml
+  push:
+    branches: [main]
+    paths:
+      - actions/git-notify/**
+      - .github/workflows/git-notify-tests.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash actions/git-notify/test.sh
