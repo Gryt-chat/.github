@@ -1,0 +1,102 @@
+name: Announce a Gryt release
+description: Post matching Discord and native Gryt release cards with concise release-note highlights.
+
+inputs:
+  component:
+    description: Human component name, such as Client or Server
+    required: true
+  version:
+    description: Release version without a leading v
+    required: true
+  channel:
+    description: beta or latest
+    required: true
+  repository:
+    description: Repository containing the GitHub release
+    required: false
+    default: ""
+  tag:
+    description: Release tag. Defaults to v plus version.
+    required: false
+    default: ""
+  release-url:
+    description: Public release URL. Derived from repository and tag when empty.
+    required: false
+    default: ""
+  release-body:
+    description: GitHub release body. Fetched when empty.
+    required: false
+    default: ""
+  artifact-label:
+    description: Optional extra field label, for example Docker
+    required: false
+    default: ""
+  artifact-value:
+    description: Optional extra field value
+    required: false
+    default: ""
+  github-token:
+    description: Optional token used to fetch release notes
+    required: false
+    default: ""
+  discord-webhook-url:
+    description: Discord release webhook URL
+    required: false
+    default: ""
+  gryt-webhook-url:
+    description: Gryt release webhook URL
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Build release notification cards
+      id: cards
+      shell: bash
+      env:
+        INPUT_COMPONENT: ${{ inputs.component }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_CHANNEL: ${{ inputs.channel }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_TAG: ${{ inputs.tag }}
+        INPUT_RELEASE_URL: ${{ inputs.release-url }}
+        INPUT_RELEASE_BODY: ${{ inputs.release-body }}
+        INPUT_ARTIFACT_LABEL: ${{ inputs.artifact-label }}
+        INPUT_ARTIFACT_VALUE: ${{ inputs.artifact-value }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        CONTEXT_REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+
+        REPOSITORY="$INPUT_REPOSITORY"
+        [[ -n "$REPOSITORY" ]] || REPOSITORY="$CONTEXT_REPOSITORY"
+
+        TAG="$INPUT_TAG"
+        [[ -n "$TAG" ]] || TAG="v$INPUT_VERSION"
+
+        RELEASE_URL="$INPUT_RELEASE_URL"
+        [[ -n "$RELEASE_URL" ]] || RELEASE_URL="https://github.com/$REPOSITORY/releases/tag/$TAG"
+
+        RELEASE_BODY="$INPUT_RELEASE_BODY"
+        if [[ -z "$RELEASE_BODY" ]]; then
+          if [[ -n "$INPUT_GITHUB_TOKEN" ]]; then
+            RELEASE_BODY="$(GH_TOKEN="$INPUT_GITHUB_TOKEN" gh release view "$TAG" --repo "$REPOSITORY" --json body -q '.body // ""' 2>/dev/null || true)"
+          else
+            RELEASE_BODY="$(curl -fsSL --retry 2               -H 'Accept: application/vnd.github+json'               "https://api.github.com/repos/$REPOSITORY/releases/tags/$TAG"               | jq -r '.body // ""' 2>/dev/null || true)"
+          fi
+        fi
+
+        export RELEASE_BODY
+        RESULT="$(bash "$GITHUB_ACTION_PATH/build-payloads.sh"           "$INPUT_COMPONENT" "$INPUT_VERSION" "$INPUT_CHANNEL"           "$REPOSITORY" "$TAG" "$RELEASE_URL"           "$INPUT_ARTIFACT_LABEL" "$INPUT_ARTIFACT_VALUE")"
+
+        echo "discord=$(jq -c '.discord' <<<"$RESULT")" >> "$GITHUB_OUTPUT"
+        echo "gryt=$(jq -c '.gryt' <<<"$RESULT")" >> "$GITHUB_OUTPUT"
+
+    - name: Post release to Discord and Gryt
+      uses: Gryt-chat/.github/actions/notify@main
+      with:
+        payload: ${{ steps.cards.outputs.discord }}
+        gryt-payload: ${{ steps.cards.outputs.gryt }}
+        discord-webhook-url: ${{ inputs.discord-webhook-url }}
+        gryt-webhook-url: ${{ inputs.gryt-webhook-url }}

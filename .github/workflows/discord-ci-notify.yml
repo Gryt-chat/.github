@@ -95,20 +95,39 @@ jobs:
             esac
           fi
 
+          DETAILS=""
           if [ "$STATE" = "failed" ]; then
             TITLE="❌ $WF_NAME failed"
-            COLOR=15548997   # Discord red
+            COLOR=15548997
+            GRYT_COLOR="#e5484d"
+
+            FAILED_JOBS=$(gh api \
+              "repos/$REPO/actions/runs/$RUN_ID/jobs?filter=latest&per_page=100" \
+              --jq '[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "- " + .name][:5] | join("\n")' \
+              2>/dev/null || echo "")
+            if [[ -n "$FAILED_JOBS" ]]; then
+              printf -v DETAILS '**Failed jobs**\n%s' "$FAILED_JOBS"
+            fi
           else
             TITLE="✅ $WF_NAME is green again"
-            COLOR=5763719    # Discord green
+            COLOR=5763719
+            GRYT_COLOR="#3fb27f"
+            DETAILS="The workflow recovered after the previous failed run."
+          fi
+
+          SHORT_SHA="$(printf '%s' "${SHA:-}" | cut -c1-7)"
+          ACTOR_VALUE="${ACTOR:-unknown}"
+          if [[ -n "${ACTOR:-}" ]]; then
+            ACTOR_VALUE="[@$ACTOR](https://github.com/$ACTOR)"
           fi
 
           PAYLOAD=$(jq -n \
             --arg title "$TITLE" \
             --arg url "$RUN_URL" \
+            --arg description "$DETAILS" \
             --arg repo "$REPO" \
             --arg branch "${BRANCH:-unknown}" \
-            --arg sha "$(printf '%s' "${SHA:-}" | cut -c1-7)" \
+            --arg sha "$SHORT_SHA" \
             --arg actor "${ACTOR:-unknown}" \
             --arg trigger "${TRIGGER:-unknown}" \
             --arg run "#$RUN_NUMBER" \
@@ -118,6 +137,7 @@ jobs:
               embeds: [{
                 title: $title,
                 url: $url,
+                description: (if $description == "" then null else $description end),
                 color: $color,
                 fields: [
                   { name: "Repository", value: $repo,    inline: true },
@@ -129,10 +149,44 @@ jobs:
                 ],
                 footer: { text: "Gryt CI" },
                 timestamp: (now | todate)
-              }]
+              } | with_entries(select(.value != null))]
+            }')
+
+          GRYT_PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg url "$RUN_URL" \
+            --arg description "$DETAILS" \
+            --arg repo "$REPO" \
+            --arg repo_url "https://github.com/$REPO" \
+            --arg branch "${BRANCH:-unknown}" \
+            --arg sha "$SHORT_SHA" \
+            --arg actor "$ACTOR_VALUE" \
+            --arg trigger "${TRIGGER:-unknown}" \
+            --arg run "#$RUN_NUMBER" \
+            --arg channel "$CHANNEL" \
+            --arg color "$GRYT_COLOR" \
+            '{
+              display_name: "Gryt CI",
+              cards: [{
+                author: {name: $repo, url: $repo_url},
+                title: $title,
+                url: $url,
+                description: (if $description == "" then null else $description end),
+                color: $color,
+                fields: [
+                  { name: "Branch", value: $branch, inline: true },
+                  { name: "Run", value: $run, inline: true },
+                  { name: "Commit", value: $sha, inline: true },
+                  { name: "Actor", value: $actor, inline: true },
+                  { name: "Event", value: $trigger, inline: true }
+                ],
+                footer: { text: ("Gryt CI · " + $channel) },
+                timestamp: (now | todate)
+              } | with_entries(select(.value != null))]
             }')
 
           echo "payload=$(printf '%s' "$PAYLOAD" | jq -c .)" >> "$GITHUB_OUTPUT"
+          echo "gryt_payload=$(printf '%s' "$GRYT_PAYLOAD" | jq -c .)" >> "$GITHUB_OUTPUT"
           echo "Reporting '$STATE' for $WF_NAME on $BRANCH."
 
       # The action never fails the job, so a broken alert path doesn't show up as a second red run.
@@ -141,5 +195,6 @@ jobs:
         uses: Gryt-chat/.github/actions/notify@main
         with:
           payload: ${{ steps.message.outputs.payload }}
+          gryt-payload: ${{ steps.message.outputs.gryt_payload }}
           discord-webhook-url: ${{ secrets.DISCORD_CI_WEBHOOK_URL }}
           gryt-webhook-url: ${{ secrets.GRYT_CI_WEBHOOK_URL }}
