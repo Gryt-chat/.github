@@ -55,16 +55,32 @@ case "$component" in
     ;;
 esac
 
-highlights="$(printf '%s\n' "$body" | awk '
-  /^\*\*Full changelogs\*\*/ { exit }
-  /^### Checking this download/ { exit }
-  /^[*-] / {
-    sub(/^[*-] /, "- ")
-    print
-    count++
-    if (count >= 4) exit
-  }
-')"
+if printf '%s\n' "$body" | grep -Eq '^## What'; then
+  highlights="$(printf '%s\n' "$body" | awk '
+    /^## What/ { in_changes = 1; next }
+    !in_changes { next }
+    /^\*\*Full changelogs\*\*/ { exit }
+    /^## / { if (count > 0) exit }
+    /^### Checking/ { exit }
+    /^[*-] / {
+      sub(/^[*-] /, "- ")
+      print
+      count++
+      if (count >= 4) exit
+    }
+  ')"
+else
+  highlights="$(printf '%s\n' "$body" | awk '
+    /^\*\*Full changelogs\*\*/ { exit }
+    /^### Checking/ { exit }
+    /^[*-] / {
+      sub(/^[*-] /, "- ")
+      print
+      count++
+      if (count >= 4) exit
+    }
+  ')"
+fi
 
 description="$summary"
 if [[ -n "$highlights" ]]; then
