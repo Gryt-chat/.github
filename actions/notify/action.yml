@@ -2,7 +2,8 @@ name: Post a notification to Discord and Gryt
 description: >-
   Posts a Discord webhook payload to Discord and a native Gryt webhook payload
   to Gryt. When no native Gryt payload is supplied, the Discord payload is
-  translated to Gryt cards for backwards compatibility.
+  translated to Gryt cards for backwards compatibility. The Gryt payload is cut
+  to the server's limits first, and nothing is ever sent over plain http.
 
 inputs:
   payload:
