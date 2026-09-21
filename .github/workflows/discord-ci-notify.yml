@@ -101,9 +101,12 @@ jobs:
             COLOR=15548997
             GRYT_COLOR="#e5484d"
 
+            # A fork's pull request names its own jobs, so the names go out in code spans.
+            # shellcheck disable=SC2016
             FAILED_JOBS=$(gh api \
               "repos/$REPO/actions/runs/$RUN_ID/jobs?filter=latest&per_page=100" \
-              --jq '[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "- " + .name][:5] | join("\n")' \
+              --jq '[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
+                | "- `" + (.name | gsub("[`\\p{Cc}]"; "") | .[0:100]) + "`"][:5] | join("\n")' \
               2>/dev/null || echo "")
             if [[ -n "$FAILED_JOBS" ]]; then
               printf -v DETAILS '**Failed jobs**\n%s' "$FAILED_JOBS"
@@ -133,7 +136,8 @@ jobs:
             --arg run "#$RUN_NUMBER" \
             --arg channel "$CHANNEL" \
             --argjson color "$COLOR" \
-            '{
+            'def code: "`" + gsub("[`\\p{Cc}]"; "") + "`";
+            {
               embeds: [{
                 title: $title,
                 url: $url,
@@ -141,7 +145,7 @@ jobs:
                 color: $color,
                 fields: [
                   { name: "Repository", value: $repo,    inline: true },
-                  { name: "Branch",     value: $branch,  inline: true },
+                  { name: "Branch",     value: ($branch | code), inline: true },
                   { name: "Run",        value: $run,     inline: true },
                   { name: "Commit",     value: $sha,     inline: true },
                   { name: "Triggered by", value: $actor, inline: true },
@@ -165,7 +169,8 @@ jobs:
             --arg run "#$RUN_NUMBER" \
             --arg channel "$CHANNEL" \
             --arg color "$GRYT_COLOR" \
-            '{
+            'def code: "`" + gsub("[`\\p{Cc}]"; "") + "`";
+            {
               display_name: "Gryt CI",
               cards: [{
                 author: {name: $repo, url: $repo_url},
@@ -174,7 +179,7 @@ jobs:
                 description: (if $description == "" then null else $description end),
                 color: $color,
                 fields: [
-                  { name: "Branch", value: $branch, inline: true },
+                  { name: "Branch", value: ($branch | code), inline: true },
                   { name: "Run", value: $run, inline: true },
                   { name: "Commit", value: $sha, inline: true },
                   { name: "Actor", value: $actor, inline: true },
