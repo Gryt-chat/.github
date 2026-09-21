@@ -1,0 +1,40 @@
+name: CI
+
+# No paths filter: every workflow and action here is copied or called by the other repositories.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
+  notifications:
+    name: Notification tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install the schema check
+        run: yarn install --frozen-lockfile --cwd test
+      - name: Lint the scripts
+        run: shellcheck actions/*/*.sh test/*.sh
+      - name: Test Git activity cards and the sender
+        run: bash actions/git-notify/test.sh
+      - name: Test release cards
+        run: bash actions/release-notify/test.sh
+      - name: Test CI cards
+        run: bash test/ci-card.test.sh

@@ -1,0 +1,17 @@
+name: Discord CI notification
+
+# Reports failed workflow runs to #ci, and the recovery. Other repositories call this with
+# Gryt-chat/.github/...@main; here it's by path. List new workflows here, or they notify nobody.
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - Gryt Git notification
+      - Sync Vikunja task
+    types: [completed]
+
+jobs:
+  notify:
+    uses: ./.github/workflows/discord-ci-notify.yml
+    secrets: inherit

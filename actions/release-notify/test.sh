@@ -18,4 +18,12 @@ jq -e '.gryt.cards[0].description | contains("This fifth item") | not' <<<"$payl
 jq -e '.gryt.cards[0].fields | length == 3' <<<"$payload" >/dev/null
 jq -e '.discord.embeds[0].description == .gryt.cards[0].description' <<<"$payload" >/dev/null
 
+# notify.sh fits every Gryt payload to the server's limits. A release card should already fit.
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+jq -c '.gryt' <<<"$payload" > "$tmp/release.json"
+jq -e --slurpfile fitted <(jq -c -f "$here/../notify/fit-gryt.jq" "$tmp/release.json") '. == $fitted[0]' \
+  "$tmp/release.json" >/dev/null
+node "$here/../../test/check-gryt-payloads.mjs" "$tmp/release.json"
+
 echo "release-notify payload tests passed"

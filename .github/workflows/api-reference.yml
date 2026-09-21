@@ -91,7 +91,7 @@ jobs:
           mv work/superproject/.github/scripts work/.github/scripts
           rm -rf work/superproject
 
-          echo "${{ inputs.superproject }}: $(ls work/.github/scripts | wc -l) scripts"
+          echo "${{ inputs.superproject }}: $(find work/.github/scripts -mindepth 1 -maxdepth 1 | wc -l) scripts"
 
       - name: Clone the other three sides
         shell: bash

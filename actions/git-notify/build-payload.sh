@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# One Gryt card for a GitHub event, or nothing when the event isn't worth one.
+# A body or comment by someone outside the project isn't relayed. Their cards get a title and a link.
 set -euo pipefail
 
 event_name="${1:-}"
@@ -15,6 +17,13 @@ jq_raw() {
   jq -r "$1 // empty" "$event_path"
 }
 
+# Copies text from the event into the card, but only when its author is part of the project.
+relay() {
+  local text="$1" association="$2" max="$3"
+  [[ "$(jq_raw "$association")" =~ ^(OWNER|MEMBER|COLLABORATOR|CONTRIBUTOR)$ ]] || return 0
+  description="$(jq -r --argjson max "$max" "($text // \"\")[0:\$max]" "$event_path")"
+}
+
 action="$(jq_raw '.action')"
 actor="$(jq_raw '.sender.login')"
 [[ -n "$actor" ]] || actor="$fallback_actor"
@@ -23,6 +32,7 @@ repo_url="$(jq_raw '.repository.html_url')"
 [[ -n "$repo_url" ]] || repo_url="https://github.com/$repo"
 
 title=""
+subject=""
 url="$repo_url"
 description=""
 context=""
@@ -59,13 +69,21 @@ case "$event_name" in
 
   pull_request|pull_request_target)
     number="$(jq_raw '.pull_request.number')"
-    pr_title="$(jq_raw '.pull_request.title')"
+    subject="$(jq_raw '.pull_request.title')"
     url="$(jq_raw '.pull_request.html_url')"
     merged="$(jq -r '.pull_request.merged // false' "$event_path")"
+    fork="$(jq -r '.pull_request.head.repo.full_name != .pull_request.base.repo.full_name' "$event_path")"
     case "$action" in
-      opened)             title="PR #$number opened" ;;
+      opened)
+        title="PR #$number opened"
+        relay '.pull_request.body' '.pull_request.author_association' 900
+        ;;
+      synchronize)
+        # A push to a branch here has its own card. A fork's push doesn't, so it gets this one.
+        [[ "$fork" == "true" ]] || exit 0
+        title="PR #$number updated"
+        ;;
       reopened)           title="PR #$number reopened" ;;
-      synchronize)        title="PR #$number updated" ;;
       ready_for_review)   title="PR #$number ready for review" ;;
       converted_to_draft) title="PR #$number converted to draft" ;;
       review_requested)   title="Review requested on PR #$number" ;;
@@ -80,36 +98,37 @@ case "$event_name" in
         ;;
       *) title="PR #$number ${action:-changed}" ;;
     esac
-    body="$(jq -r '(.pull_request.body // "")[0:900]' "$event_path")"
-    description="**$pr_title**"
-    [[ -z "$body" ]] || description="$description"$'\n\n'"$body"
-    context="$(jq -r '.pull_request.base.ref + " ← " + .pull_request.head.ref' "$event_path")"
+    if [[ "$fork" == "true" ]]; then
+      context="$(jq -r '.pull_request.base.ref + " ← `" + ((.pull_request.head.label // "a fork") | gsub("`"; "")) + "`"' "$event_path")"
+    else
+      context="$(jq -r '.pull_request.base.ref + " ← " + .pull_request.head.ref' "$event_path")"
+    fi
     event_label="Pull request"
     ;;
 
   issues)
     number="$(jq_raw '.issue.number')"
-    issue_title="$(jq_raw '.issue.title')"
+    subject="$(jq_raw '.issue.title')"
     url="$(jq_raw '.issue.html_url')"
     case "$action" in
-      opened)     title="Issue #$number opened" ;;
+      opened)
+        title="Issue #$number opened"
+        relay '.issue.body' '.issue.author_association' 900
+        ;;
       reopened)   title="Issue #$number reopened" ;;
       closed)     title="Issue #$number closed"; color="#3fb27f" ;;
-      labeled)    title="Issue #$number labeled" ;;
-      unlabeled)  title="Issue #$number unlabeled" ;;
+      labeled|unlabeled) exit 0 ;;
       assigned)   title="Issue #$number assigned" ;;
       unassigned) title="Issue #$number unassigned" ;;
       *) title="Issue #$number ${action:-changed}" ;;
     esac
-    body="$(jq -r '(.issue.body // "")[0:900]' "$event_path")"
-    description="**$issue_title**"
-    [[ -z "$body" ]] || description="$description"$'\n\n'"$body"
     context="#$number"
     event_label="Issue"
     ;;
 
   issue_comment)
     number="$(jq_raw '.issue.number')"
+    subject="$(jq_raw '.issue.title')"
     url="$(jq_raw '.comment.html_url')"
     if jq -e '.issue.pull_request != null' "$event_path" >/dev/null; then
       title="Comment on PR #$number"
@@ -118,29 +137,36 @@ case "$event_name" in
       title="Comment on issue #$number"
       event_label="Issue comment"
     fi
-    description="$(jq -r '(.comment.body // "")[0:1800]' "$event_path")"
+    relay '.comment.body' '.comment.author_association' 1800
     context="#$number"
     ;;
 
   pull_request_review)
     number="$(jq_raw '.pull_request.number')"
+    subject="$(jq_raw '.pull_request.title')"
     state="$(jq_raw '.review.state')"
     url="$(jq_raw '.review.html_url')"
+    # A reply in a review thread arrives as an empty "commented" review too, beside its own card.
+    if [[ "$state" != approved && "$state" != changes_requested ]] &&
+      ! jq -e '(.review.body // "") | test("\\S")' "$event_path" >/dev/null; then
+      exit 0
+    fi
     case "$state" in
       approved)          title="PR #$number approved"; color="#3fb27f" ;;
       changes_requested) title="Changes requested on PR #$number"; color="#f5a524" ;;
       *)                 title="Review submitted on PR #$number" ;;
     esac
-    description="$(jq -r '(.review.body // "")[0:1800]' "$event_path")"
+    relay '.review.body' '.review.author_association' 1800
     context="#$number"
     event_label="Pull request review"
     ;;
 
   pull_request_review_comment)
     number="$(jq_raw '.pull_request.number')"
+    subject="$(jq_raw '.pull_request.title')"
     title="Review comment on PR #$number"
     url="$(jq_raw '.comment.html_url')"
-    description="$(jq -r '(.comment.body // "")[0:1800]' "$event_path")"
+    relay '.comment.body' '.comment.author_association' 1800
     context="#$number"
     event_label="Review comment"
     ;;
@@ -150,7 +176,7 @@ case "$event_name" in
     short="${sha:0:7}"
     title="Comment on commit $short"
     url="$(jq_raw '.comment.html_url')"
-    description="$(jq -r '(.comment.body // "")[0:1800]' "$event_path")"
+    relay '.comment.body' '.comment.author_association' 1800
     context="$short"
     event_label="Commit comment"
     ;;
@@ -174,24 +200,24 @@ case "$event_name" in
 
   discussion)
     number="$(jq_raw '.discussion.number')"
-    discussion_title="$(jq_raw '.discussion.title')"
+    subject="$(jq_raw '.discussion.title')"
     url="$(jq_raw '.discussion.html_url')"
     case "$action" in
       created)    title="Discussion #$number created" ;;
       answered)   title="Discussion #$number answered"; color="#3fb27f" ;;
       unanswered) title="Answer removed from discussion #$number" ;;
-      *)        title="Discussion #$number ${action:-changed}" ;;
+      *)          title="Discussion #$number ${action:-changed}" ;;
     esac
-    description="**$discussion_title**"
     context="#$number"
     event_label="Discussion"
     ;;
 
   discussion_comment)
     number="$(jq_raw '.discussion.number')"
+    subject="$(jq_raw '.discussion.title')"
     title="Comment on discussion #$number"
     url="$(jq_raw '.comment.html_url')"
-    description="$(jq -r '(.comment.body // "")[0:1800]' "$event_path")"
+    relay '.comment.body' '.comment.author_association' 1800
     context="#$number"
     event_label="Discussion comment"
     ;;
@@ -203,20 +229,32 @@ esac
 
 [[ -n "$title" ]] || exit 0
 [[ -n "$url" ]] || url="$repo_url"
+# Card titles are plain text, so a stranger's issue or PR title can't carry markdown there.
+[[ -z "$subject" ]] || title="$title: $subject"
 
 actor_value="${actor:-unknown}"
 if [[ -n "$actor" ]]; then
   actor_value="[@$actor](https://github.com/$actor)"
 fi
 
-jq -cn   --arg title "$title"   --arg url "$url"   --arg description "$description"   --arg repo "$repo"   --arg repo_url "$repo_url"   --arg actor "$actor_value"   --arg context "$context"   --arg event_label "$event_label"   --arg color "$color"   '{
+jq -cn \
+  --arg title "$title" \
+  --arg url "$url" \
+  --arg description "$description" \
+  --arg repo "$repo" \
+  --arg repo_url "$repo_url" \
+  --arg actor "$actor_value" \
+  --arg context "$context" \
+  --arg event_label "$event_label" \
+  --arg color "$color" \
+  '{
     display_name: "GitHub",
     cards: [
       ({
         author: {name: $repo, url: $repo_url},
         title: $title,
         url: $url,
-        description: (if $description == "" then null else $description end),
+        description: (if $description | test("\\S") then $description else null end),
         color: $color,
         fields: (
           [{name: "Actor", value: $actor, inline: true}] +
