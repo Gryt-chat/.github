@@ -18,7 +18,7 @@
 <p align="center">
   <a href="https://gryt.chat">Website</a> ·
   <a href="https://app.gryt.chat">Try it</a> ·
-  <a href="https://docs.gryt.chat">Docs</a> ·
+  <a href="https://docs.gryt.chat/docs">Docs</a> ·
   <a href="https://github.com/Gryt-chat/gryt/releases">Download</a>
 </p>
 
@@ -84,7 +84,7 @@ thumbnails generated out of process so a bad image cannot take the server down.
 **Open about how it is built**
 
 Gryt is developed partly with AI assistance. The
-[policy](https://docs.gryt.chat/docs/guide/ai) says which parts of the codebase
+[policy](https://docs.gryt.chat/docs/about/ai) says which parts of the codebase
 never merge without a human reading the whole diff.
 
 </td>
@@ -100,7 +100,7 @@ git clone --recurse-submodules https://github.com/Gryt-chat/gryt.git
 cd gryt && ./ops/start_dev.sh
 ```
 
-Or read the [deployment guide](https://docs.gryt.chat/docs/deployment/docker-compose)
+Or read the [deployment guide](https://docs.gryt.chat/docs/host/docker-compose)
 to put it on a real machine.
 
 ### Repositories
@@ -136,5 +136,5 @@ What sponsoring pays for, the tiers, and everyone who has sponsored:
 [Sponsor Gryt](https://github.com/sponsors/Gryt-chat)
 
 <p align="center">
-  <sub>AGPL-3.0 · Built in Norway · <a href="https://docs.gryt.chat/docs/guide/contributing">Contributing</a></sub>
+  <sub>AGPL-3.0 · Built in Norway · <a href="https://docs.gryt.chat/docs/about/contributing">Contributing</a></sub>
 </p>
