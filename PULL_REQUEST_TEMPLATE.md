@@ -8,7 +8,7 @@ AI assistance is allowed anywhere in Gryt, as long as it's disclosed. Some areas
 are audited more critically — the SFU, authentication and identity code, the
 client's key handling, the image worker and the data layer are read line by line
 before anything merges. Full details and the exact paths:
-https://docs.gryt.chat/docs/guide/ai
+https://docs.gryt.chat/docs/about/ai
 
 - [ ] This PR contains AI-assisted code
 - [ ] This PR touches a review-required path (expect a slower, closer review)
