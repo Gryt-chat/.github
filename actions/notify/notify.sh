@@ -15,7 +15,8 @@ valid_object() {
 }
 
 post() {
-  local name="$1" url="${2//[[:space:]]/}" body="$3" reply code attempt wait
+  local name="$1" url="${2//[[:space:]]/}" body="$3" reply headers code attempt wait
+  local req_host location loc_scheme loc_host followed=0
 
   # The token is in the URL, so plain http would send it in the clear, redirect or not.
   case "${url,,}" in
@@ -31,8 +32,9 @@ post() {
   esac
 
   reply="$(mktemp)"
+  headers="$(mktemp)"
   for attempt in 1 2; do
-    code="$(printf '%s' "$body" | curl -sS --proto =https --max-time 30 -o "$reply" -w '%{http_code}' \
+    code="$(printf '%s' "$body" | curl -sS --proto =https --max-time 30 -o "$reply" -D "$headers" -w '%{http_code}' \
       -H 'Content-Type: application/json' --data-binary @- "$url")" || true
     [[ "$code" == 429 && "$attempt" == 1 ]] || break
     wait="$(jq -r '(.retry_after_ms // ((.retry_after // empty) * 1000)) | numbers | floor' "$reply" 2>/dev/null)"
@@ -44,17 +46,34 @@ post() {
     sleep "$wait"
   done
 
+  # A redirect is followed once, and only when it stays on the same host and
+  # points at https — never to another host, and never back down to http.
+  if [[ "$code" == 301 || "$code" == 302 || "$code" == 307 || "$code" == 308 ]]; then
+    location="$(tr -d '\r' <"$headers" | awk 'tolower($1) == "location:" {print $2; exit}')"
+    req_host="$(printf '%s' "${url#*://}" | cut -d/ -f1)"
+    loc_scheme="$(printf '%s' "${location%%://*}" | tr '[:upper:]' '[:lower:]')"
+    loc_host="$(printf '%s' "${location#*://}" | cut -d/ -f1)"
+    if [[ -n "$location" && "$loc_scheme" == "https" && "${loc_host,,}" == "${req_host,,}" ]]; then
+      echo "::warning::$name: the webhook URL answered HTTP $code and redirected to https on the same host. It was retried there once. Point the secret straight at https:// to skip the redirect."
+      code="$(printf '%s' "$body" | curl -sS --proto =https --max-time 30 -o "$reply" -D "$headers" -w '%{http_code}' \
+        -H 'Content-Type: application/json' --data-binary @- "$location")" || true
+      followed=1
+    fi
+  fi
+
   if [[ "$code" == 2* ]]; then
     echo "$name: posted (HTTP $code)."
     NAME="$name" jq -r '.warnings[]? | "::warning::\(env.NAME): \(.path) \(.code): \(.message)"' \
       "$reply" 2>/dev/null
+  elif [[ "$code" == 3* && "$followed" == 0 ]]; then
+    echo "::warning::$name: the webhook URL answered HTTP $code, a redirect, and redirects aren't followed to a different host or back down to http. Point the secret at the address it should use."
   elif [[ "$code" == 3* ]]; then
-    echo "::warning::$name: the webhook URL answered HTTP $code, a redirect, and redirects aren't followed. Point the secret at the address it redirects to."
+    echo "::warning::$name: the redirect target itself answered HTTP $code, another redirect, and only one is followed. Point the secret at the address it should use."
   else
     # Only a JSON reply is shown. An HTML error page can quote the URL, token and all.
     echo "::warning::$name: the post failed (HTTP ${code:-000}). $(jq -c . "$reply" 2>/dev/null | head -c 500)"
   fi
-  rm -f "$reply"
+  rm -f "$reply" "$headers"
 }
 
 if [[ -n "$discord_url" ]]; then
