@@ -25,6 +25,8 @@ jobs:
           PR: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
           read -r AUTHOR TYPE ASSOCIATION < <(gh api "repos/$REPO/pulls/$PR" --jq '"\(.user.login) \(.user.type) \(.author_association)"')
+          # The token can't see private org membership, so the maintainers are named too.
+          case "$AUTHOR" in sivert-io|grytchat) echo "$AUTHOR maintains Gryt."; exit 0 ;; esac
           case "$ASSOCIATION" in OWNER|MEMBER) echo "$AUTHOR is in the organisation."; exit 0 ;; esac
           [ "$TYPE" = "Bot" ] && { echo "$AUTHOR is a bot."; exit 0; }
           SENTENCE="I have read the CLA Document and I hereby sign the CLA"
