@@ -1,35 +1,38 @@
 name: CLA
 
 # Fails a pull request whose author hasn't signed CLA.md. Ours rather than a CLA
-# service: see "Build it ourselves, keep dependencies few".
+# service or action: see "Build it ourselves, keep dependencies few".
 #
-# Each repo calls it with
-# `uses: Gryt-chat/.github/.github/workflows/cla.yml@main`. Signatures are read
-# from this repo's main branch, so a signature counts once its pull request merges.
+# A repo calls it on `pull_request_target` and `issue_comment`, so it reruns when
+# the author comments the sentence. It reads comments and never checks out PR code.
 
 on:
   workflow_call:
 
+permissions:
+  pull-requests: read
+
 jobs:
   cla:
     runs-on: ubuntu-latest
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request
     steps:
       - name: Check the author has signed
         env:
-          AUTHOR: ${{ github.event.pull_request.user.login }}
-          ASSOCIATION: ${{ github.event.pull_request.author_association }}
-          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
-          case "$ASSOCIATION" in
-            OWNER|MEMBER) echo "$AUTHOR is in the organisation."; exit 0 ;;
-          esac
-          if [ "$AUTHOR_TYPE" = "Bot" ]; then
-            echo "$AUTHOR is a bot."; exit 0
+          read -r AUTHOR TYPE ASSOCIATION < <(gh api "repos/$REPO/pulls/$PR" --jq '"\(.user.login) \(.user.type) \(.author_association)"')
+          case "$ASSOCIATION" in OWNER|MEMBER) echo "$AUTHOR is in the organisation."; exit 0 ;; esac
+          [ "$TYPE" = "Bot" ] && { echo "$AUTHOR is a bot."; exit 0; }
+          SENTENCE="I have read the CLA Document and I hereby sign the CLA"
+          if gh api "repos/$REPO/issues/$PR/comments" --paginate --jq ".[] | select(.user.login == \"$AUTHOR\") | .body" | grep -qxF "$SENTENCE"; then
+            echo "$AUTHOR signed on this pull request."; exit 0
           fi
           curl -fsSL https://raw.githubusercontent.com/Gryt-chat/.github/main/cla/signatures -o signatures
           if grep -v '^#' signatures | grep -qixF "$AUTHOR"; then
-            echo "$AUTHOR has signed the CLA."
-            exit 0
+            echo "$AUTHOR is in cla/signatures."; exit 0
           fi
-          echo "::error::$AUTHOR hasn't signed the Gryt CLA yet. See https://github.com/Gryt-chat/.github/blob/main/CLA.md for how to sign."
+          echo "::error::$AUTHOR hasn't signed the CLA. Comment \"$SENTENCE\" on this pull request. See https://github.com/Gryt-chat/.github/blob/main/CLA.md"
           exit 1

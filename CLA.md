@@ -1,59 +1,22 @@
-# Gryt Contributor License Agreement
+# Contributor License Agreement
 
-> **Draft, not in force.** This text has not been reviewed by a lawyer yet.
-> Nothing is signed against it until it has.
+> **Draft, not in force.** This text hasn't been reviewed by a lawyer yet.
 
-Gryt is run by [OWNER'S FULL LEGAL NAME] ("the Owner"). This agreement covers
-everything you submit to any repository in the Gryt-chat GitHub organisation:
-code, documentation, images, translations and anything else ("Contributions").
-You sign it once, and it covers every Contribution you make from then on, and
-any you made before.
+Thank you for contributing to Gryt ("the Project"), owned by Sivert Gullberg Hansen ("the Maintainer").
 
-## 1. The licence you give
+By signing this agreement, you agree to the following for every contribution you submit to any repository in the Gryt-chat organisation, now or later, and for any you submitted before:
 
-You grant the Owner, and anyone the Owner passes these rights on to, a
-perpetual, worldwide, non-exclusive, free, irrevocable licence to use, copy,
-modify, publish, distribute, sublicense and sell your Contributions and works
-based on them, under any licence terms the Owner chooses. That includes
-proprietary terms, and it includes changing the licence of Gryt in the future.
+1. **You own it or may submit it.** Your contribution is your original work, or you have the right to submit it under this agreement. If your employer has rights to your work, you have their permission. If any of it came from someone else's project or from an AI tool, you say so in the pull request.
+2. **Copyright licence.** You grant the Maintainer a perpetual, worldwide, non-exclusive, royalty-free, irrevocable licence to use, copy, modify, publish, distribute, sublicense and relicense your contribution, under any terms, including the Project's licence (AGPL-3.0) and any other licence the Maintainer chooses later.
+3. **Patent licence.** You grant the Maintainer and recipients of the Project a perpetual, worldwide, non-exclusive, royalty-free, irrevocable patent licence for any of your patents that your contribution necessarily infringes, to make, use, sell and distribute the Project with your contribution.
+4. **You keep your rights.** You keep the copyright in your contribution and may use it however you like.
+5. **No warranty.** Your contribution is provided "as is". You don't have to support it.
+6. **Why this exists.** Gryt is AGPL today. This agreement lets the Maintainer change that later without having to track down everyone who ever contributed.
 
-You keep your own copyright, and you can use your Contributions however you like
-elsewhere.
+## How to sign
 
-## 2. Patents
+Comment this on your pull request, exactly:
 
-If your Contribution is covered by a patent you hold or can license, you grant
-the Owner, and everyone who receives Gryt, a perpetual, worldwide, free,
-irrevocable licence under that patent to make, use, sell and distribute the
-Contribution as part of Gryt.
+> I have read the CLA Document and I hereby sign the CLA
 
-## 3. Moral rights
-
-Where the law lets you, you agree not to assert moral rights in your
-Contributions against the Owner or anyone who receives Gryt. Where it doesn't,
-this agreement doesn't take them away.
-
-## 4. What you confirm
-
-- Each Contribution is yours to give. You wrote it, or you have the right to
-  submit it under this agreement.
-- If an employer or anyone else has rights in what you make, they've agreed to
-  this, or it doesn't cover your Contribution.
-- If a Contribution includes someone else's work, or was made with an AI tool,
-  you say so in the pull request, along with any licence that applies to it.
-- You'll tell the Owner if any of this stops being true.
-
-## 5. No obligations
-
-The Owner doesn't have to use your Contributions. They're given as they are,
-with no warranty, except for what you confirm in section 4.
-
-## 6. How to sign
-
-Open a pull request against
-[Gryt-chat/.github](https://github.com/Gryt-chat/.github) that adds your GitHub
-username to `cla/signatures`, on a line of its own. In the pull request, write:
-
-> I have read the Gryt Contributor License Agreement and I agree to it.
-
-The merged pull request is the record of your signature.
+The check on the pull request reruns when you do. Questions: ask in an issue before signing.

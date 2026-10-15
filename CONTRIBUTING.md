@@ -2,7 +2,7 @@
 
 Thanks for wanting to help. The full guide is at https://docs.gryt.chat/docs/about/contributing. The short version:
 
-- Sign the [CLA](CLA.md) before your first pull request can merge.
+- Sign the [CLA](CLA.md) by commenting on your pull request. Nothing merges before that.
 - Open an issue before anything over about 300 changed lines.
 - No new dependencies or vendored code without an issue. Gryt builds what it can itself.
 - One change per pull request.
