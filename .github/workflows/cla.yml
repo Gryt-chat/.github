@@ -1,0 +1,35 @@
+name: CLA
+
+# Fails a pull request whose author hasn't signed CLA.md. Ours rather than a CLA
+# service: see "Build it ourselves, keep dependencies few".
+#
+# Each repo calls it with
+# `uses: Gryt-chat/.github/.github/workflows/cla.yml@main`. Signatures are read
+# from this repo's main branch, so a signature counts once its pull request merges.
+
+on:
+  workflow_call:
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the author has signed
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          ASSOCIATION: ${{ github.event.pull_request.author_association }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        run: |
+          case "$ASSOCIATION" in
+            OWNER|MEMBER) echo "$AUTHOR is in the organisation."; exit 0 ;;
+          esac
+          if [ "$AUTHOR_TYPE" = "Bot" ]; then
+            echo "$AUTHOR is a bot."; exit 0
+          fi
+          curl -fsSL https://raw.githubusercontent.com/Gryt-chat/.github/main/cla/signatures -o signatures
+          if grep -v '^#' signatures | grep -qixF "$AUTHOR"; then
+            echo "$AUTHOR has signed the CLA."
+            exit 0
+          fi
+          echo "::error::$AUTHOR hasn't signed the Gryt CLA yet. See https://github.com/Gryt-chat/.github/blob/main/CLA.md for how to sign."
+          exit 1

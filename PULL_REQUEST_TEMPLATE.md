@@ -15,6 +15,10 @@ https://docs.gryt.chat/docs/about/ai
 
 ## Checklist
 
+- [ ] I've signed the [CLA](https://github.com/Gryt-chat/.github/blob/main/CLA.md), or I'm in the Gryt-chat organisation
+- [ ] Under about 300 changed lines, or there's an issue we agreed on first: #
+- [ ] No new dependencies or vendored code, or they were agreed on an issue
+
 - [ ] Tests pass (`yarn test`, `go test ./...`)
 - [ ] Code is linted (`yarn lint`, `go fmt ./...`)
 - [ ] Documentation is updated if needed
