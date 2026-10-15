@@ -11,6 +11,7 @@ on:
 
 permissions:
   pull-requests: read
+  actions: write
 
 jobs:
   cla:
@@ -28,7 +29,14 @@ jobs:
           [ "$TYPE" = "Bot" ] && { echo "$AUTHOR is a bot."; exit 0; }
           SENTENCE="I have read the CLA Document and I hereby sign the CLA"
           if gh api "repos/$REPO/issues/$PR/comments" --paginate --jq ".[] | select(.user.login == \"$AUTHOR\") | .body" | grep -qxF "$SENTENCE"; then
-            echo "$AUTHOR signed on this pull request."; exit 0
+            echo "$AUTHOR signed on this pull request."
+            # A comment's run isn't attached to the PR, so rerun the PR's own failed check.
+            if [ "${{ github.event_name }}" = "issue_comment" ]; then
+              SHA=$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)
+              gh api "repos/$REPO/actions/runs?event=pull_request_target&head_sha=$SHA" --jq '.workflow_runs[] | select(.name == "CLA" and .conclusion == "failure") | .id' |
+                while read -r RUN; do gh api -X POST "repos/$REPO/actions/runs/$RUN/rerun" >/dev/null && echo "Reran $RUN."; done
+            fi
+            exit 0
           fi
           curl -fsSL https://raw.githubusercontent.com/Gryt-chat/.github/main/cla/signatures -o signatures
           if grep -v '^#' signatures | grep -qixF "$AUTHOR"; then

@@ -1,7 +1,5 @@
 # Contributor License Agreement
 
-> **Draft, not in force.** This text hasn't been reviewed by a lawyer yet.
-
 Thank you for contributing to Gryt ("the Project"), owned by Sivert Gullberg Hansen ("the Maintainer").
 
 By signing this agreement, you agree to the following for every contribution you submit to any repository in the Gryt-chat organisation, now or later, and for any you submitted before:
