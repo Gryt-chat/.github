@@ -137,12 +137,11 @@ jobs:
           mkdir -p packages/site
           npm install --no-save --prefix packages/site typescript@5
 
-      # Either extension while the superproject moves its scripts to TypeScript (GRYT-1800).
       - name: Compare
         id: compare
         shell: bash
         working-directory: work
-        run: node "$(ls .github/scripts/generate-api-reference.m[jt]s)" --check
+        run: node .github/scripts/generate-api-reference.mts --check
 
       # What --check will not print. Both times this fired, the next hour went on
       # rebuilding the layout above by hand just to see which lines had moved.
@@ -152,7 +151,7 @@ jobs:
         working-directory: work
         run: |
           set -euo pipefail
-          node "$(ls .github/scripts/generate-api-reference.m[jt]s)"
+          node .github/scripts/generate-api-reference.mts
           echo "::group::What the generator would write"
           git -C packages/docs --no-pager diff -- content/docs/build || true
           echo "::endgroup::"
@@ -164,4 +163,4 @@ jobs:
         if: inputs.component == 'server' || inputs.component == 'docs'
         shell: bash
         working-directory: work
-        run: node "$(ls .github/scripts/check-socket-coverage.m[jt]s)"
+        run: node .github/scripts/check-socket-coverage.mts
