@@ -118,7 +118,7 @@ to put it on a real machine.
 | [`ui`](https://github.com/Gryt-chat/ui) · [`docs`](https://github.com/Gryt-chat/docs) · [`site`](https://github.com/Gryt-chat/site) | Components, docs, landing page | |
 
 > [!NOTE]
-> Gryt is in beta. Breaking changes happen between releases.
+> In development since May 2022. Gryt ships often, from a stable channel and a beta channel. Read the [changelog](https://gryt.chat/changelog) before you update a server.
 
 ### Sponsors
 
